@@ -1,0 +1,23 @@
+#include "bad_format.h"
+
+std::string bad_format::FileName()
+{
+	return file;
+}
+
+size_t bad_format::Offset()
+{
+	return offset;
+}
+
+bad_format::bad_format(std::string fileName, size_t offset, std::string message)
+{
+	file = fileName;
+	this->offset = offset;
+	this->message = message;
+}
+
+std::string bad_format::to_string()
+{
+	return "Invalid format in file: " + file + "(pos: " + std::to_string(offset) + "): " + message + "\n";
+}
