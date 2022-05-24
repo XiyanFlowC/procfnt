@@ -1,10 +1,10 @@
-#include "Pallet.h"
+#include "Palette.h"
 
-Pallet::Pallet() : Graphic()
+Palette::Palette() : Graphic()
 {
 }
 
-Pallet::Pallet(Pallet& m)
+Palette::Palette(Palette& m)
 {
     width = m.width;
     height = m.height;
@@ -13,20 +13,20 @@ Pallet::Pallet(Pallet& m)
     memcpy(pixels, m.pixels, sizeof(Pixel) * Size());
 }
 
-Pallet::Pallet(int w) : Graphic(w, 1)
+Palette::Palette(int w) : Graphic(w, 1)
 {
 }
 
-Pallet::Pallet(std::string path) : Graphic(path)
+Palette::Palette(std::string path) : Graphic(path)
 {
 }
 
-bool Pallet::IsInPallet(Pixel& color)
+bool Palette::IsInPalette(const Pixel& color) const
 {
-    return GetPalletIndex(color) != -1;
+    return GetPaletteIndex(color) != -1;
 }
 
-int Pallet::GetPalletIndex(Pixel& color)
+int Palette::GetPaletteIndex(const Pixel& color) const
 {
     for (int i = 0; i < width * height; ++i)
     {
@@ -35,12 +35,12 @@ int Pallet::GetPalletIndex(Pixel& color)
     return -1;
 }
 
-Pixel Pallet::GetColor(int index)
+Pixel Palette::GetColor(int index) const
 {
     return GetPixel(index);
 }
 
-void Pallet::ExtractPallet(Graphic& g, int size)
+void Palette::ExtractPalette(Graphic& g, int size)
 {
     std::set<Pixel> colours;
     for (int i = 0; i < g.Size(); ++i)
@@ -65,23 +65,33 @@ void Pallet::ExtractPallet(Graphic& g, int size)
     }
 }
 
-void Pallet::SaveFile()
+void Palette::SaveFile()
 {
     struct {
         byte ident[4];
         word size;
     } header{{'P', 'L', '0', '0'}, Size()};
-    FILE* f = fopen((fileName + ".plt").c_str(), "wb");
+    FILE* f = fopen((fileName).c_str(), "wb");
     fwrite(&header, sizeof(header), 1, f);
     fwrite(pixels, sizeof(Pixel), Size(), f);
     fclose(f);
 }
 
-void Pallet::LoadFile()
+void Palette::LoadFile()
 {
+    struct {
+        byte ident[4];
+        word size;
+    } hdr;
+    FILE* f = fopen((fileName).c_str(), "rb");
+    fread(&hdr, sizeof(hdr), 1, f);
+    if (pixels != nullptr) delete[] pixels;
+    pixels = new Pixel[hdr.size];
+    fread(pixels, sizeof(Pixel), hdr.size, f);
+    fclose(f);
 }
 
-Pallet& Pallet::operator=(const Pallet& b)
+Palette& Palette::operator=(const Palette& b)
 {
     Clean();
     width = b.width;

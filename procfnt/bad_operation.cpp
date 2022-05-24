@@ -9,3 +9,8 @@ std::string bad_operation::to_string()
 {
 	return message;
 }
+
+const char* bad_operation::what()
+{
+	return to_string().c_str();
+}

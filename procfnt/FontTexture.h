@@ -7,7 +7,7 @@
 #include "bad_parameter.h"
 #include "bad_operation.h"
 #include "Graphic.h"
-#include "Pallet.h"
+#include "Palette.h"
 
 #pragma pack(push,1)
 struct font_texture_t {
@@ -29,21 +29,23 @@ class FontTexture
 	byte* data;
 	int size;
 public:
+	FontTexture();
+	FontTexture(Graphic& tex);
 	FontTexture(font_texture_t info, byte* compressedData, int bpp);
 
-	const font_texture_t &GetInfo();
+	const font_texture_t &GetInfo() const;
 
-	byte* GetCompressedData(int& length);
+	byte* GetCompressedData(int& length) const;
 
-	void UpdateTexture(const Graphic& g, const Pallet& p);
+	void UpdateTexture(const Graphic& g, const Palette& p);
 
-	void GetTexture(Graphic& g, Pallet& p);
+	void GetTexture(Graphic& g, Palette& p) const;
 
-	word GetCodePoint();
+	word GetCodePoint() const;
 
 	void SetCodePoint(word codepoint);
 
-	std::string GetConsoleDemo();
+	std::string GetConsoleDemo() const;
 
 	~FontTexture();
 };

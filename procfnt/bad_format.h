@@ -16,5 +16,7 @@ public:
 	bad_format(std::string fileName, size_t offset, std::string message);
 
 	std::string to_string();
+
+	const char* what();
 };
 

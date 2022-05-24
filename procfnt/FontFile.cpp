@@ -37,10 +37,10 @@ FontFile::~FontFile()
 	}
 }
 
-static int bpp_calc(int pallet_num) {
+static int bpp_calc(int palette_num) {
 	int size = -1;
-	while (pallet_num) {
-		pallet_num >>= 1;
+	while (palette_num) {
+		palette_num >>= 1;
 		size++;
 	}
 	return size;
@@ -73,7 +73,7 @@ void FontFile::LoadFile()
 			FontTexture* tex = nullptr;
 			try
 			{
-				tex = new FontTexture(texdef[j], data, bpp_calc(header.pallet_size));
+				tex = new FontTexture(texdef[j], data, bpp_calc(header.palette_size));
 			}
 			catch (bad_parameter& e)
 			{
@@ -89,15 +89,15 @@ void FontFile::LoadFile()
 		delete[] texdef;
 	}
 
-	fseek(file, header.pallet_offset, SEEK_SET);
-	word* pal = new word[header.pallet_size];
-	fread(pal, sizeof(word), header.pallet_size, file);
-	Pixel* pix = new Pixel[header.pallet_size];
-	for (int i = 0; i < header.pallet_size; ++i)
+	fseek(file, header.palette_offset, SEEK_SET);
+	word* pal = new word[header.palette_size];
+	fread(pal, sizeof(word), header.palette_size, file);
+	Pixel* pix = new Pixel[header.palette_size];
+	for (int i = 0; i < header.palette_size; ++i)
 	{
 		pix[i].UnpackWord(pal[i]);
 	}
-	pallet.SetPixels(header.pallet_size, 1, pix);
+	palette.SetPixels(header.palette_size, 1, pix);
 	delete[] pix;
 	delete[] pal;
 }
@@ -107,12 +107,12 @@ const std::vector<FontTexture*> FontFile::GetTextureGroup(int group)
 	return *textures[group];
 }
 
-Pallet& FontFile::GetPallet()
+Palette& FontFile::GetPalette()
 {
-	return pallet;
+	return palette;
 }
 
-void FontFile::SubPallet(const Pallet& pallet)
+void FontFile::SubPalette(const Palette& palette)
 {
-	this->pallet = pallet;
+	this->palette = palette;
 }

@@ -10,3 +10,8 @@ std::string bad_parameter::to_string()
 {
 	return std::string("Parameter ") + paraName + " failure: " + message + "\n";
 }
+
+const char* bad_parameter::what()
+{
+	return to_string().c_str();
+}

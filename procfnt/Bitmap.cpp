@@ -31,8 +31,8 @@ void Bitmap::SetBitCount(int value)
 
 void Bitmap::SaveFile()
 {
-    Pallet pl;
-    pl.ExtractPallet(*this, 1 << bit_count);
+    Palette pl;
+    pl.ExtractPalette(*this, 1 << bit_count);
     if (pl.Size() > (1 << bit_count)) throw bad_operation("number of colour kinds exceeded limitation! reduce colour usage or increase the bit count.");
     // if (bit_count != 4) throw bad_operation("for now, only bit_count == 4 is valid.");
     bmpheader hdr{
@@ -95,7 +95,7 @@ void Bitmap::SaveFile()
             {
                 for (int j = 0; j < 8; ++j)
                 {
-                    tmp |= pl.GetPalletIndex(pixels[line * width + col + j]) << (7 - j);
+                    tmp |= pl.GetPaletteIndex(pixels[line * width + col + j]) << (7 - j);
                 }
                 col += 8;
             }
@@ -103,18 +103,18 @@ void Bitmap::SaveFile()
             {
                 for (int j = 0; j < 4; ++j)
                 {
-                    tmp |= pl.GetPalletIndex(pixels[line * width + col + j]) << (6 - (j << 1));
+                    tmp |= pl.GetPaletteIndex(pixels[line * width + col + j]) << (6 - (j << 1));
                 }
                 col += 4;
             }
             else if (ppb == 2)
             {
-                tmp = (pl.GetPalletIndex(pixels[line * width + col]) << 4) | (pl.GetPalletIndex(pixels[line * width + col + 1]));
+                tmp = (pl.GetPaletteIndex(pixels[line * width + col]) << 4) | (pl.GetPaletteIndex(pixels[line * width + col + 1]));
                 col += 2;
             }
             else if (ppb == 1)
             {
-                tmp = pl.GetPalletIndex(pixels[line * width + col++]);
+                tmp = pl.GetPaletteIndex(pixels[line * width + col++]);
             }
             seq[i] = tmp;
             if (col >= width) col = 0, line--;
@@ -134,4 +134,50 @@ void Bitmap::SaveFile()
 
 void Bitmap::LoadFile()
 {
+    bmpheader hdr;
+    bmpinfo inf;
+    FILE* file = fopen(fileName.c_str(), "rb");
+    fread(&hdr, sizeof(hdr), 1, file);
+    if (hdr.ident[0] != 'B' || hdr.ident[1] != 'M')
+    {
+        throw bad_operation("not a valid bmp file to read.");
+    }
+    fread(&inf, sizeof(inf), 1, file);
+    if (inf.bit_count != 4)
+    {
+        throw bad_format(fileName, ftell(file), "bit_count of bmp must be 4 (16 colours bitmap).");
+    }
+    width = inf.width;
+    height = inf.height;
+    bit_count = inf.bit_count;
+
+    if (inf.bit_count > 32) throw bad_format(fileName, ftell(file), "bit_count too large.");
+    word* qrgb = new word[1 << inf.bit_count];
+    Palette pl(1 << inf.bit_count);
+    fread(qrgb, sizeof(word), static_cast<size_t>(1) << inf.bit_count, file);
+    for (int i = 0; i < 1 << inf.bit_count; ++i)
+    {
+        pl.SetPixel(i, Pixel(qrgb[i]));
+    }
+    delete[] qrgb;
+
+    byte* data = new byte[height * ((inf.bit_count * width + 7) >> 3)];
+    fseek(file, hdr.offset, SEEK_SET);
+    fread(data, sizeof(byte), static_cast<size_t>(hdr.size) - hdr.offset, file);
+    if (pixels != nullptr) delete[] pixels;
+    pixels = new Pixel[Size()];
+    int line = height - 1, col = 0;
+    for (int i = 0; i < hdr.size - hdr.offset; ++i)
+    {
+        if (inf.bit_count == 4)
+        {
+            SetPixel(line, col++, pl.GetColor(data[i] >> 4));
+            SetPixel(line, col++, pl.GetColor(data[i] & 0xF));
+            if (col >= width) col = 0, line++;
+            if (line >= height) throw bad_format(fileName, ftell(file), "image out of declaired size.");
+        }
+    }
+    delete[] data;
+
+    fclose(file);
 }

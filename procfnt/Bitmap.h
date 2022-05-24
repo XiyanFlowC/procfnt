@@ -3,9 +3,10 @@
 #include <cerrno>
 #include <cstring>
 #include "Graphic.h"
-#include "Pallet.h"
+#include "Palette.h"
 #include "bad_parameter.h"
 #include "bad_operation.h"
+#include "bad_format.h"
 
 #pragma pack(push,1)
 struct bmpheader {

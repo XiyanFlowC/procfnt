@@ -27,7 +27,7 @@
     <ClCompile Include="Graphic.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Pallet.cpp">
+    <ClCompile Include="Palette.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="Pixel.cpp">
@@ -62,7 +62,7 @@
     <ClInclude Include="Graphic.h">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Pallet.h">
+    <ClInclude Include="Palette.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Pixel.h">

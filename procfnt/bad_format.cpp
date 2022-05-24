@@ -19,5 +19,10 @@ bad_format::bad_format(std::string fileName, size_t offset, std::string message)
 
 std::string bad_format::to_string()
 {
-	return "Invalid format in file: " + file + "(pos: " + std::to_string(offset) + "): " + message + "\n";
+	return "Invalid format in file: " + file + "(near " + std::to_string(offset) + "): " + message + "\n";
+}
+
+const char* bad_format::what()
+{
+	return to_string().c_str();
 }

@@ -1,5 +1,23 @@
 #include "FontTexture.h"
 
+FontTexture::FontTexture()
+{
+	memset(&info, 0, sizeof(font_texture_t));
+	info.drw_h = 0x10;
+	info.drw_w = 0x10;
+	info.ukn = 0x10;
+}
+
+FontTexture::FontTexture(Graphic& tex)
+{
+	memset(&info, 0, sizeof(font_texture_t));
+	info.drw_h = 0x10;
+	info.drw_w = 0x10;
+	info.ukn = 0x10;
+	info.canv_h = tex.Height() >> 1;
+	info.canv_w = tex.Width() >> 1;
+}
+
 FontTexture::FontTexture(font_texture_t info, byte* compressedData, int bpp)
 {
 	this->info = info;
@@ -23,12 +41,12 @@ FontTexture::FontTexture(font_texture_t info, byte* compressedData, int bpp)
 	delete[] buffer;
 }
 
-const font_texture_t& FontTexture::GetInfo()
+const font_texture_t& FontTexture::GetInfo() const
 {
 	return info;
 }
 
-byte* FontTexture::GetCompressedData(int& length)
+byte* FontTexture::GetCompressedData(int& length) const
 {
 	unsigned long destLeng = size * 2;
 	byte* buffer = new byte[length];
@@ -37,12 +55,27 @@ byte* FontTexture::GetCompressedData(int& length)
 	return buffer;
 }
 
+void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // FIXME: only handled the 4bpp situ.
+{
+	if (p.Size() != 16) throw bad_parameter("p", "palette must be 16 colours.");
+
+	if (data != nullptr) delete[] data;
+	size = g.Size() / 2;
+	data = new byte[size];
+	for (int i = 0; i < size; ++i)
+	{
+		byte tmp = 0;
+		tmp |= p.GetPaletteIndex(g.GetPixel(i * 2)) << 4;
+		tmp |= p.GetPaletteIndex(g.GetPixel(i * 2 + 1)) & 0xF;
+	}
+}
+
 char toASCIIArt(int num)
 {
 	return " 1OEM%$#~~~~~~~~"[num];
 }
 
-void FontTexture::GetTexture(Graphic& g, Pallet& p)
+void FontTexture::GetTexture(Graphic& g, Palette& p) const
 {
 	std::vector<Pixel> tmp;
 	for (int i = 0; i < size; ++i) // FIXME: assumed all texture is 4bpp, enhance it!
@@ -53,7 +86,7 @@ void FontTexture::GetTexture(Graphic& g, Pallet& p)
 	g.SetPixels(info.canv_w << 1, info.canv_h << 1, tmp.data());
 }
 
-word FontTexture::GetCodePoint()
+word FontTexture::GetCodePoint() const
 {
 	return info.codepoint;
 }
@@ -63,7 +96,7 @@ void FontTexture::SetCodePoint(word codepoint)
 	info.codepoint = codepoint;
 }
 
-std::string FontTexture::GetConsoleDemo() // for 4bpp preview only, comment this out once others prepared!
+std::string FontTexture::GetConsoleDemo() const // for 4bpp preview only, comment this out once others prepared!
 {
 	std::string ret;
 	for (int i = 0; i < info.canv_h << 1; ++i)

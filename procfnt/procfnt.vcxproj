@@ -138,7 +138,7 @@
     <ClCompile Include="FontFile.cpp" />
     <ClCompile Include="FontTexture.cpp" />
     <ClCompile Include="Graphic.cpp" />
-    <ClCompile Include="Pallet.cpp" />
+    <ClCompile Include="Palette.cpp" />
     <ClCompile Include="Pixel.cpp" />
     <ClCompile Include="procfnt.cpp" />
   </ItemGroup>
@@ -152,7 +152,7 @@
     <ClInclude Include="FontTexture.h" />
     <ClInclude Include="Graphic.h" />
     <ClInclude Include="liteopt.h" />
-    <ClInclude Include="Pallet.h" />
+    <ClInclude Include="Palette.h" />
     <ClInclude Include="Pixel.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

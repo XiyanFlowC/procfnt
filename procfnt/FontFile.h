@@ -5,7 +5,7 @@
 #include <iostream>
 #include "fixedtype.h"
 #include "FontTexture.h"
-#include "Pallet.h"
+#include "Palette.h"
 #include "bad_operation.h"
 #include "bad_format.h"
 
@@ -15,8 +15,8 @@ struct font_header_t {
 	byte ukn1; // 0x10
 	byte ukn2; // 0x10
 	word ukn3; // 0x10
-	word pallet_offset;
-	word pallet_size; // 0x10 ?
+	word palette_offset;
+	word palette_size; // 0x10 ?
 	struct {
 		word count;
 		word offset;
@@ -31,7 +31,7 @@ protected:
 	std::string file_path;
 	font_header_t header;
 	std::vector<FontTexture*>* textures[36];
-	Pallet pallet;
+	Palette palette;
 public:
 	/// <summary>
 	/// 创建新的字体文件对象
@@ -52,10 +52,10 @@ public:
 
 	const std::vector<FontTexture*> GetTextureGroup(int group);
 
-	void AddTexture(int group, word codePoint);
+	void AddTexture(int group, word codePoint, FontTexture* texture);
 
-	Pallet& GetPallet();
+	Palette& GetPalette();
 
-	void SubPallet(const Pallet& pallet);
+	void SubPalette(const Palette& palette);
 };
 

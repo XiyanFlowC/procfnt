@@ -15,27 +15,31 @@ protected:
 
 public:
 	Graphic();
+	Graphic(Graphic& g);
 	Graphic(std::string fileName);
 	Graphic(int w, int h);
 	Graphic(int w, int h, const Pixel* pixels);
 
-	virtual void LoadFile() = 0;
-	virtual void SaveFile() = 0;
+	virtual void LoadFile();
+	virtual void SaveFile();
 	void LoadFile(std::string fileName);
 
 	void SetFilePath(std::string filename);
 
-	Pixel GetPixel(int index);
-	Pixel GetPixel(int u, int v);
+	Pixel GetPixel(int index) const;
+	Pixel GetPixel(int u, int v) const;
 	void SetPixel(int index, Pixel data);
 	void SetPixel(int u, int v, Pixel data);
 	void SetPixels(int w, int h, const Pixel* pixels);
-	const Pixel* const GetPixels(int& o_w, int& o_h);
+	const Pixel* const GetPixels(int& o_w, int& o_h) const;
 
 	void Paste(int u, int v, Graphic& g);
-	Graphic* Extract(int u, int v, int h, int w);
+	Graphic* Extract(int u, int v, int h, int w) const;
 
-	int Size();
+	int Height() const;
+	int Width() const;
+
+	int Size() const;
 	void Clean();
 
 	~Graphic();

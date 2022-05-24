@@ -11,5 +11,7 @@ public:
 	bad_operation(std::string p_message);
 
 	std::string to_string();
+
+	const char* what();
 };
 

@@ -41,13 +41,13 @@ extern "C" {
 */
 int cfg_mode = 0, cfg_type = 0, cfg_bitcount = 16, cfg_block_h = 16, cfg_block_w = 16, cfg_full_alpha = 128;
 int cfg_outfile_h = cfg_block_h * 64, cfg_outfile_w = cfg_block_w * 64;
-const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpallet = nullptr, * cfg_oripallet = nullptr;
+const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpalette = nullptr, * cfg_oripalette = nullptr;
 
 #ifdef WIN32
 #define strdup _strdup
 #endif
 
-void BlandPallet(Pallet& pl, const Pixel& bgc)
+void BlandPalette(Palette& pl, const Pixel& bgc)
 {
 #define ALPHA_CALC_PF(t, bg, val) ((t).val = (t).val * (t).alpha / cfg_full_alpha + (bg).val * (cfg_full_alpha - (t).alpha) / cfg_full_alpha)
     int size = pl.Size();
@@ -63,7 +63,7 @@ void BlandPallet(Pallet& pl, const Pixel& bgc)
 #undef ALPHA_CALC_PF
 }
 
-void ExtractGroup(FontFile& font, int grpidx, Pallet pl);
+void ExtractGroup(FontFile& font, int grpidx, Palette pl);
 
 int main(int argc, const char** argv)
 {
@@ -136,16 +136,16 @@ int main(int argc, const char** argv)
             }
             return 0;
         });
-    lopt_regopt("original-pallet", 'p', 0, [](const char* param)->int
+    lopt_regopt("original-palette", 'p', 0, [](const char* param)->int
         {
             if (param == NULL) return -1;
-            cfg_oripallet = strdup(param);
+            cfg_oripalette = strdup(param);
             return 0;
         });
-    lopt_regopt("substitude-pallet", 'P', 0, [](const char* param)->int
+    lopt_regopt("substitude-palette", 'P', 0, [](const char* param)->int
         {
             if (param == NULL) return -1;
-            cfg_subpallet = strdup(param);
+            cfg_subpalette = strdup(param);
             return 0;
         });
     lopt_regopt("full-alpha", 'A', 0, [](const char* param)->int
@@ -230,22 +230,22 @@ int main(int argc, const char** argv)
     {
         FontFile font(cfg_infn);
 
-        if (cfg_oripallet != nullptr)
+        if (cfg_oripalette != nullptr)
         {
-            auto& pl = font.GetPallet();
-            pl.SetFilePath(cfg_oripallet);
+            auto& pl = font.GetPalette();
+            pl.SetFilePath(cfg_oripalette);
             pl.SaveFile();
         }
 
-        Pallet pl;
-        if (cfg_subpallet != nullptr)
+        Palette pl;
+        if (cfg_subpalette != nullptr)
         {
-            pl.SetFilePath(cfg_subpallet);
+            pl.SetFilePath(cfg_subpalette);
             pl.LoadFile();
         }
         else
         {
-            pl = font.GetPallet();
+            pl = font.GetPalette();
         }
 
         if ((cfg_type >> 11) & 1) // flag a
@@ -262,7 +262,7 @@ int main(int argc, const char** argv)
     }
 }
 
-void ExtractGroup(FontFile& font, int grpidx, Pallet pl)
+void ExtractGroup(FontFile& font, int grpidx, Palette pl)
 {
     std::cout << "extracting group " << grpidx << std::endl;
     auto grp = font.GetTextureGroup(grpidx);
@@ -272,9 +272,9 @@ void ExtractGroup(FontFile& font, int grpidx, Pallet pl)
         fopen((std::string(cfg_outfn) + "/grp_" + std::to_string(grpidx) + ".txt").c_str(),
             "wb");
 
-    if (!((cfg_type >> 5) & 1)) // not rbga pallet
+    if (!((cfg_type >> 5) & 1)) // not rbga palette
     {
-        BlandPallet(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
+        BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
     }
 
     Graphic* g = nullptr;

@@ -12,5 +12,7 @@ public:
 	bad_parameter(std::string param, std::string msg);
 
 	std::string to_string();
+
+	const char* what();
 };
 
