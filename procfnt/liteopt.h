@@ -71,11 +71,11 @@ static void lopt_regopt(const char *name, char chname, unsigned char flg, int (*
     if (name != NULL)
     {
         flg |= LOPT_FLG_STR_VLD;
-        strcpy(_reged_opt[opt_idx++].long_opt, name);
+        strcpy(_reged_opt[opt_idx].long_opt, name);
     }
     if(chname != '\0') flg |= LOPT_FLG_CH_VLD;
     _reged_opt[opt_idx].flg = flg;
-    _reged_opt[opt_idx].flg |= LOPT_FLG_OPT_VLD;
+    _reged_opt[opt_idx++].flg |= LOPT_FLG_OPT_VLD;
 }
 
 static int lopt_parse(int argc, const char **argv)

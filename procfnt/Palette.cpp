@@ -1,6 +1,6 @@
 #include "Palette.h"
 
-Palette::Palette() : Graphic()
+Palette::Palette() : Graphic(0, 1)
 {
 }
 
@@ -86,6 +86,7 @@ void Palette::LoadFile()
     FILE* f = fopen((fileName).c_str(), "rb");
     fread(&hdr, sizeof(hdr), 1, f);
     if (pixels != nullptr) delete[] pixels;
+    width = hdr.size;
     pixels = new Pixel[hdr.size];
     fread(pixels, sizeof(Pixel), hdr.size, f);
     fclose(f);

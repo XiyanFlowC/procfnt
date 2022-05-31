@@ -57,6 +57,8 @@ public:
 	void AddTexture(int group, FontTexture* texture);
 	void GimmGroup(int group, std::vector<FontTexture*>* texs);
 
+	void SetFilePath(const std::string& path);
+
 	Palette& GetPalette();
 
 	void SubPalette(const Palette& palette);

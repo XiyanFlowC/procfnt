@@ -67,13 +67,14 @@ void FontFile::SaveFile()
 		{
 			fseek(f, head_pos, SEEK_SET);
 			font_texture_t inf = (*itr)->GetInfo();
+			int leng;
+			byte* data = (*itr)->GetCompressedData(leng);
 			inf.offset = loc;
+			inf.size = leng;
 			fwrite(&inf, sizeof(font_texture_t), 1, f);
 			head_pos += sizeof(font_texture_t);
 
 			fseek(f, loc, SEEK_SET);
-			int leng;
-			byte* data = (*itr)->GetCompressedData(leng);
 			fwrite(data, sizeof(byte), leng, f);
 			loc += leng;
 			delete[] data;
@@ -182,6 +183,11 @@ void FontFile::GimmGroup(int group, std::vector<FontTexture*>* texs)
 {
 	if (nullptr != textures[group]) DropGroup(group);
 	textures[group] = texs;
+}
+
+void FontFile::SetFilePath(const std::string& path)
+{
+	file_path = path;
 }
 
 Palette& FontFile::GetPalette()

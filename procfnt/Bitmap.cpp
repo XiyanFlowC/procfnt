@@ -6,6 +6,7 @@ Bitmap::Bitmap() : bit_count(4)
 
 Bitmap::Bitmap(std::string path) : bit_count(4), Graphic(path)
 {
+    LoadFile();
 }
 
 Bitmap::Bitmap(int w, int h) : Graphic(w, h), bit_count(4)
@@ -177,10 +178,10 @@ void Bitmap::LoadFile()
     {
         if (inf.bit_count == 4) // TODO: add more support for bmp file
         {
+            if (line < 0) throw bad_format(fileName, ftell(file), "image out of declaired size.");
             SetPixel(line, col++, pl.GetColor(data[i] >> 4)); // FIXME: caused out of range if col is odd
             SetPixel(line, col++, pl.GetColor(data[i] & 0xF));
             if (col >= width) col = 0, line--; // bmp stores from bottom to top
-            if (line < 0) throw bad_format(fileName, ftell(file), "image out of declaired size.");
         }
     }
     delete[] data;

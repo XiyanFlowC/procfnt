@@ -21,7 +21,7 @@ Graphic::Graphic(std::string fileName)
 	pixels = nullptr;
 	width = height = 0;
 	this->fileName = fileName;
-	LoadFile(fileName);
+	//LoadFile(fileName);
 }
 
 Graphic::Graphic(int w, int h)
@@ -113,7 +113,7 @@ void Graphic::Paste(int u, int v, Graphic& g)
 
 Graphic* Graphic::Extract(int u, int v, int w, int h) const
 {
-	Graphic* ret = new Graphic(u, v);
+	Graphic* ret = new Graphic(w, h);
 	for (int i = 0; i < h; ++i)
 		for (int j = 0; j < w; ++j)
 			ret->SetPixel(i, j, GetPixel(u + i, v + j));

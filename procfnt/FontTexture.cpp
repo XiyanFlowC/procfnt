@@ -57,7 +57,7 @@ const font_texture_t& FontTexture::GetInfo() const
 byte* FontTexture::GetCompressedData(int& length) const
 {
 	unsigned long destLeng = size * 2;
-	byte* buffer = new byte[length];
+	byte* buffer = new byte[destLeng];
 	compress(buffer, &destLeng, data, size);
 	length = destLeng;
 	return buffer;
@@ -75,6 +75,7 @@ void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // FIXME: on
 		byte tmp = 0;
 		tmp |= p.GetPaletteIndex(g.GetPixel(i * 2)) << 4;
 		tmp |= p.GetPaletteIndex(g.GetPixel(i * 2 + 1)) & 0xF;
+		data[i] = tmp;
 	}
 
 	info.canv_h = g.Height() >> 1;

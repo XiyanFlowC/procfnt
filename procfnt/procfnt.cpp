@@ -41,7 +41,7 @@ extern "C" {
 */
 int cfg_mode = 0, cfg_type = 0, cfg_bitcount = 16, cfg_block_h = 16, cfg_block_w = 16, cfg_full_alpha = 128;
 int cfg_outfile_h = cfg_block_h * 64, cfg_outfile_w = cfg_block_w * 64;
-const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpalette = nullptr, * cfg_oripalette = nullptr;
+const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpalette = nullptr, * cfg_oripalette = nullptr, * cfg_alternm = nullptr;
 
 #ifdef WIN32
 #define strdup _strdup
@@ -102,6 +102,11 @@ int main(int argc, const char** argv)
     lopt_regopt("split", 's', 0, [](const char* param)->int
         {
             cfg_type = (cfg_type & ~0xc) | 0x4;
+            return 0;
+        });
+    lopt_regopt("save-as", 'v', 0, [](const char* param)->int
+        {
+            cfg_alternm = strdup(param);
             return 0;
         });
     lopt_regopt("block-height", 'h', 0, [](const char* param)->int
@@ -201,86 +206,96 @@ int main(int argc, const char** argv)
     lopt_parse(argc, argv);
     lopt_finalize();
 
-    // opt check & err / warn
-    if (cfg_infn == nullptr || cfg_outfn == nullptr)
-    {
-        std::cerr << "Input and/or output filename have not set yet, using -i and/or -o to specify input/output filename(s).";
-        exit(-1);
-    }
-
-    if (!((cfg_type >> 5) & 1) && cfg_oripalette == nullptr && cfg_mode == 0)
-    {
-        std::cerr << "Warning! blend enabled but not save blended original palette, may caused data lost." << std::endl;
-        std::cerr << "Note: using both -p and -" << std::endl;
-    }
-
-    if (cfg_mode == 0)
-    {
-        std::cerr << "Mode not set. Using -p or -u to specify a mode.\n";
-        exit(-1);
-    }
-
-    if (cfg_mode == 1) // pack
-    {
-        FontFile font(cfg_outfn);
-
-        if ((cfg_type >> 10) & 1) // flag a
+ //   try {
+        // opt check & err / warn
+        if (cfg_infn == nullptr || cfg_outfn == nullptr)
         {
-            for (int i = 0; i < 36; ++i)
+            std::cerr << "Input and/or output filename have not set yet, using -i and/or -o to specify input/output filename(s).";
+            exit(-1);
+        }
+
+        if (!((cfg_type >> 5) & 1) && cfg_oripalette == nullptr && cfg_mode == 2)
+        {
+            std::cerr << "Warning! blend enabled but not save blended original palette, may caused data lost." << std::endl;
+            std::cerr << "Note: the blending is a feature to avoid the alpha chanel be output to bmp since bmp doesn't support it. however, it will change the palette of the output." << std::endl;
+            std::cerr << "Note: so, you can using both -p to specify a palette file to store modiffied font palette, or -X to store original palette to bmp file." << std::endl;
+            std::cerr << "Note: and by this, after you modify the texture, you can using -P to specified the outputed palette by -p in unpacking to restore the original palette mapping." << std::endl;
+        }
+
+        if (cfg_mode == 0)
+        {
+            std::cerr << "Mode not set. Using -p or -u to specify a mode.\n" << std::endl;
+            exit(-1);
+        }
+
+        if (cfg_mode == 1) // pack
+        {
+            FontFile font(cfg_outfn);
+
+            if (cfg_alternm != nullptr)
             {
-                ImportGroup(font, i);
+                font.SetFilePath(cfg_alternm);
             }
-        }
-        else
-        {
-            ImportGroup(font, (cfg_type >> 6) & 0x1F);
-        }
-    }
-    else // unpack
-    {
-        FontFile font(cfg_infn);
 
-        if (cfg_oripalette != nullptr) // to save original (font file) palette
+            if ((cfg_type >> 10) & 1) // flag a
+            {
+                for (int i = 0; i < 36; ++i)
+                {
+                    ImportGroup(font, i);
+                }
+            }
+            else
+            {
+                ImportGroup(font, (cfg_type >> 6) & 0x1F);
+            }
+
+            font.SaveFile();
+        }
+        else // unpack
         {
-            auto& pl = font.GetPalette();
+            FontFile font(cfg_infn);
 
             if (!((cfg_type >> 5) & 1)) // not rbga palette
             {
-                BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
+                BlandPalette(font.GetPalette(), Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
             }
 
-            pl.SetFilePath(cfg_oripalette);
-            pl.SaveFile();
-        }
-
-        Palette pl;
-        if (cfg_subpalette != nullptr) // to substitude original palette to save other colors
-        {
-            pl.SetFilePath(cfg_subpalette);
-            pl.LoadFile();
-        }
-        else
-        {
-            pl = font.GetPalette();
-
-            if (!((cfg_type >> 5) & 1)) // not rbga palette
+            if (cfg_oripalette != nullptr) // to save original (font file) palette
             {
-                BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
-            }
-        }
+                auto& pl = font.GetPalette();
 
-        if ((cfg_type >> 11) & 1) // flag a
-        {
-            for (int i = 0; i < 36; ++i)
+                pl.SetFilePath(cfg_oripalette);
+                pl.SaveFile();
+            }
+
+            Palette pl;
+            if (cfg_subpalette != nullptr) // to substitude original palette to save other colors
             {
-                ExtractGroup(font, i, pl);
+                pl.SetFilePath(cfg_subpalette);
+                pl.LoadFile();
+            }
+            else
+            {
+                pl = font.GetPalette();
+            }
+
+            if ((cfg_type >> 11) & 1) // flag a
+            {
+                for (int i = 0; i < 36; ++i)
+                {
+                    ExtractGroup(font, i, pl);
+                }
+            }
+            else
+            {
+                ExtractGroup(font, (cfg_type >> 6) & 0x1F, pl);
             }
         }
-        else
-        {
-            ExtractGroup(font, (cfg_type >> 6) & 0x1F, pl);
-        }
-    }
+ //   }
+//    catch (std::exception ex)
+//    {
+//        std::cerr << ex.what() << std::endl;
+//    }
 }
 
 int GetNextCodePoint(FILE* f)
@@ -361,6 +376,7 @@ void ImportGroup(FontFile& font, int grpidx)
             FontTexture* tex = new FontTexture(*gr, pl);
             tex->SetCodePoint(codepoint);
             grp->push_back(tex);
+            // std::cout << tex->GetConsoleDemo() << std::endl;
 
             delete gr;
         }
