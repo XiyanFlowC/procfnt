@@ -16,7 +16,7 @@ extern "C" {
 #pragma comment(lib, "D:\\Library\\zlib-1.2.12\\contrib\\vstudio\\vc14\\x64\\ZlibStatReleaseWithoutAsm\\zlibstat.lib")
 /*
 * cfg_type (int32) layout:
-* +7=*7=*7-------+3+2---0*7-6+5+4+3-2+1-0+
+* +7=*7=*7------4+3+2---0*7-6+5+4+3-2+1-0+
 * |~~~~~   r     |a|    g    |X|x| m | t |
 * +==*==*--------+-+-----*---+-+-+---+---+
 * x: save the flag whether cut the texture size from the block size when pack (if width less than 8, cut down
@@ -64,6 +64,7 @@ void BlandPalette(Palette& pl, const Pixel& bgc)
 }
 
 void ExtractGroup(FontFile& font, int grpidx, Palette pl);
+void ImportGroup(FontFile& font, int grpidx);
 
 int main(int argc, const char** argv)
 {
@@ -176,20 +177,22 @@ int main(int argc, const char** argv)
         {
             std::cout << "PES/WE 2014 Font File Batch Processor by xiyan" << std::endl;
             std::cout << "ZLib Version: " << zlibVersion() << std::endl;
-            std::cout << "--input         -i [file name] specify input file." << std::endl;
-            std::cout << "--output        -o [file name] specify output file." << std::endl;
-            std::cout << "--repack        -r pack the font." << std::endl;
-            std::cout << "--unpack        -u unpack the font." << std::endl;
-            std::cout << "--bmp           -b specify the output format as windows bmp file." << std::endl;
-            std::cout << "--proc-grp      -g [group id] process the specified group." << std::endl;
-            std::cout << "--proc-all      -a process all groups." << std::endl;
-            std::cout << "--block-width   -w [block width] specify the size of a single block in output picture." << std::endl;
-            std::cout << "--block-height  -h [block height] specify the size of a single block in output picture." << std::endl;
-            std::cout << "--split         -s output seperately." << std::endl;
-            std::cout << "--canvas-width  -W [output file width] specify the size of output file." << std::endl;
-            std::cout << "--canvas-height -H [output file height] specify the size of output file." << std::endl;
+            std::cout << "--input              -i [file name] specify input file." << std::endl;
+            std::cout << "--output             -o [file name] specify output file." << std::endl;
+            std::cout << "--repack             -r pack the font." << std::endl;
+            std::cout << "--unpack             -u unpack the font." << std::endl;
+            std::cout << "--bmp                -b specify the output format as windows bmp file." << std::endl;
+            std::cout << "--proc-grp           -g [group id] process the specified group." << std::endl;
+            std::cout << "--proc-all           -a process all groups." << std::endl;
+            std::cout << "--block-width        -w [block width] specify the size of a single block in output picture." << std::endl;
+            std::cout << "--block-height       -h [block height] specify the size of a single block in output picture." << std::endl;
+            std::cout << "--split              -s output seperately." << std::endl;
+            std::cout << "--original-palette   -p [palette name] set the font file's palette." << std::endl;
+            std::cout << "--substitude-palette -P [palette name] set the bmp file's palette." << std::endl;
+            std::cout << "--canvas-width       -W [output file width] specify the size of output file." << std::endl;
+            std::cout << "--canvas-height      -H [output file height] specify the size of output file." << std::endl;
             //std::cout << "--method  -m    specify the work method, see the document." << std::endl;
-            std::cout << "--help          -? show this message." << std::endl;
+            std::cout << "--help               -? show this message." << std::endl;
             std::cout << "\nExample\n" <<
                 "\tprocfnt -abu -i fnt.bin -o ./font_ex/  # to all groups, output as bmp, unpack the file; input is fnt.bin and output directory is ./font_ex/" << std::endl;
             std::cout << "\tprocfnt -bu -g 1 -i fnt.bin -o grp_1.bmp  # output as bmp, unpack the file; process group 1 only; input is fnt.bin and output is grp_1.bmp" << std::endl;
@@ -198,10 +201,17 @@ int main(int argc, const char** argv)
     lopt_parse(argc, argv);
     lopt_finalize();
 
+    // opt check & err / warn
     if (cfg_infn == nullptr || cfg_outfn == nullptr)
     {
         std::cerr << "Input and/or output filename have not set yet, using -i and/or -o to specify input/output filename(s).";
         exit(-1);
+    }
+
+    if (!((cfg_type >> 5) & 1) && cfg_oripalette == nullptr && cfg_mode == 0)
+    {
+        std::cerr << "Warning! blend enabled but not save blended original palette, may caused data lost." << std::endl;
+        std::cerr << "Note: using both -p and -" << std::endl;
     }
 
     if (cfg_mode == 0)
@@ -218,27 +228,33 @@ int main(int argc, const char** argv)
         {
             for (int i = 0; i < 36; ++i)
             {
-                //ImportGroup(font, i);
+                ImportGroup(font, i);
             }
         }
         else
         {
-            //ImportGroup(font, (cfg_type >> 6) & 0x1F);
+            ImportGroup(font, (cfg_type >> 6) & 0x1F);
         }
     }
     else // unpack
     {
         FontFile font(cfg_infn);
 
-        if (cfg_oripalette != nullptr)
+        if (cfg_oripalette != nullptr) // to save original (font file) palette
         {
             auto& pl = font.GetPalette();
+
+            if (!((cfg_type >> 5) & 1)) // not rbga palette
+            {
+                BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
+            }
+
             pl.SetFilePath(cfg_oripalette);
             pl.SaveFile();
         }
 
         Palette pl;
-        if (cfg_subpalette != nullptr)
+        if (cfg_subpalette != nullptr) // to substitude original palette to save other colors
         {
             pl.SetFilePath(cfg_subpalette);
             pl.LoadFile();
@@ -246,6 +262,11 @@ int main(int argc, const char** argv)
         else
         {
             pl = font.GetPalette();
+
+            if (!((cfg_type >> 5) & 1)) // not rbga palette
+            {
+                BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
+            }
         }
 
         if ((cfg_type >> 11) & 1) // flag a
@@ -262,6 +283,100 @@ int main(int argc, const char** argv)
     }
 }
 
+int GetNextCodePoint(FILE* f)
+{
+    int ch0 = fgetc(f);
+    if (ch0 == EOF) return 0;
+
+    int ret = ch0;
+    int sz = 0;
+    while (ch0 & 0x80)
+    {
+        ch0 <<= 1;
+        sz++;
+    }
+    // sz -= 1;
+
+    while (sz--)
+    {
+        ret <<= 8;
+        ret |= fgetc(f);
+    }
+    return ret;
+}
+
+void ImportGroup(FontFile& font, int grpidx)
+{
+    std::cout << "importing group" << grpidx << std::endl;
+    FILE* code_list = fopen((std::string(cfg_infn) + "/grp_" + std::to_string(grpidx) + ".txt").c_str(),
+        "rb");
+
+    std::vector<FontTexture*>* grp = new std::vector<FontTexture*>();
+    if ((cfg_type >> 2) & 1) // load seperately
+    {
+        std::string infolder = std::string(cfg_infn) + "/grp_" + std::to_string(grpidx) + "/";
+
+        int i = 0;
+        int codepoint = 0;
+        while (codepoint = GetNextCodePoint(code_list))
+        {
+            Bitmap bm(infolder + std::to_string(i) + ".bmp");
+
+            FontTexture* tex;
+            if (cfg_subpalette == nullptr)
+                tex = new FontTexture(bm, font.GetPalette());
+            else
+                tex = new FontTexture(bm, Palette(cfg_subpalette));
+
+            tex->SetCodePoint(codepoint);
+            grp->push_back(tex);
+
+            ++i;
+        }
+    }
+    else
+    {
+        Bitmap* bm = new Bitmap(std::string(cfg_infn) + "/grp_" + std::to_string(grpidx) + ".bmp");
+
+        int codepoint;
+        int line = 0, row = 0;
+
+        Palette pl;
+        if (nullptr != cfg_subpalette)
+        {
+            pl.SetFilePath(cfg_subpalette);
+            pl.LoadFile();
+        }
+        else
+        {
+            pl = font.GetPalette();
+        }
+
+        while (codepoint = GetNextCodePoint(code_list))
+        {
+            Graphic* gr = bm->Extract(line, row, cfg_block_w, cfg_block_h); // TODO: add config file to determaine the w and h to control the gr size.
+            row += cfg_block_w;
+            if (row >= cfg_outfile_w) row = 0, line += cfg_block_h;
+
+            FontTexture* tex = new FontTexture(*gr, pl);
+            tex->SetCodePoint(codepoint);
+            grp->push_back(tex);
+
+            delete gr;
+        }
+        delete bm;
+    }
+    // grp built up
+    font.GimmGroup(grpidx, grp);
+
+    if (cfg_oripalette != nullptr)
+    {
+        Palette plt(cfg_oripalette);
+        font.SubPalette(plt);
+    }
+    fclose(code_list);
+}
+
 void ExtractGroup(FontFile& font, int grpidx, Palette pl)
 {
     std::cout << "extracting group " << grpidx << std::endl;
@@ -272,10 +387,10 @@ void ExtractGroup(FontFile& font, int grpidx, Palette pl)
         fopen((std::string(cfg_outfn) + "/grp_" + std::to_string(grpidx) + ".txt").c_str(),
             "wb");
 
-    if (!((cfg_type >> 5) & 1)) // not rbga palette
-    {
-        BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
-    }
+    //if (!((cfg_type >> 5) & 1)) // not rbga palette
+    //{
+    //    BlandPalette(pl, Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
+    //}
 
     Graphic* g = nullptr;
     switch (cfg_type & 0x3)

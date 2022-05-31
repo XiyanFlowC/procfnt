@@ -111,7 +111,7 @@ void Graphic::Paste(int u, int v, Graphic& g)
 			SetPixel(u + i, v + j, g.GetPixel(i, j));
 }
 
-Graphic* Graphic::Extract(int u, int v, int h, int w) const
+Graphic* Graphic::Extract(int u, int v, int w, int h) const
 {
 	Graphic* ret = new Graphic(u, v);
 	for (int i = 0; i < h; ++i)

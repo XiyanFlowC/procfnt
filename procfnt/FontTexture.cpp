@@ -8,14 +8,22 @@ FontTexture::FontTexture()
 	info.ukn = 0x10;
 }
 
-FontTexture::FontTexture(Graphic& tex)
+//FontTexture::FontTexture(Graphic& tex)
+//{
+//	memset(&info, 0, sizeof(font_texture_t));
+//	info.drw_h = 0x10;
+//	info.drw_w = 0x10;
+//	info.ukn = 0x10;
+//	UpdateTexture(tex);
+//}
+
+FontTexture::FontTexture(const Graphic& tex, const Palette& pl)
 {
 	memset(&info, 0, sizeof(font_texture_t));
 	info.drw_h = 0x10;
 	info.drw_w = 0x10;
 	info.ukn = 0x10;
-	info.canv_h = tex.Height() >> 1;
-	info.canv_w = tex.Width() >> 1;
+	UpdateTexture(tex, pl);
 }
 
 FontTexture::FontTexture(font_texture_t info, byte* compressedData, int bpp)
@@ -68,7 +76,17 @@ void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // FIXME: on
 		tmp |= p.GetPaletteIndex(g.GetPixel(i * 2)) << 4;
 		tmp |= p.GetPaletteIndex(g.GetPixel(i * 2 + 1)) & 0xF;
 	}
+
+	info.canv_h = g.Height() >> 1;
+	info.canv_w = g.Width() >> 1;
 }
+
+//void FontTexture::UpdateTexture(const Graphic& g)
+//{
+//	Palette pl;
+//	pl.ExtractPalette(g, 16);
+//	UpdateTexture(g, pl);
+//}
 
 char toASCIIArt(int num)
 {

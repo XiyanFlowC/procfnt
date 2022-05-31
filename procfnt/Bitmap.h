@@ -46,5 +46,7 @@ public:
     void SetBitCount(int value);
     void SaveFile();
     void LoadFile();
+    //void LoadFile(const Palette& subpl);
+    void MapColor(const Palette& c2i, const Palette& i2c);
 };
 

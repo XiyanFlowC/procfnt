@@ -52,7 +52,10 @@ public:
 
 	const std::vector<FontTexture*> GetTextureGroup(int group);
 
-	void AddTexture(int group, word codePoint, FontTexture* texture);
+	void DropTexture(int group, word codePoint);
+	void DropGroup(int group);
+	void AddTexture(int group, FontTexture* texture);
+	void GimmGroup(int group, std::vector<FontTexture*>* texs);
 
 	Palette& GetPalette();
 

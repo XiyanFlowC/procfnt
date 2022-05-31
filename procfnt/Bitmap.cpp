@@ -50,7 +50,7 @@ void Bitmap::SaveFile()
         bit_count,
         0,
         (bit_count * Size() + 7) >> 3,
-        1000, 1000,
+        1000, 1000, // Not really used in anywhere?
         1 << bit_count,
         1 << bit_count
     };
@@ -124,7 +124,7 @@ void Bitmap::SaveFile()
     {
         throw bad_operation("not supported bpp. please wait for update.");
         int bpp = bit_count / 8;
-        // FIXME: implement it!
+        // UNDONE: implement it!
     }
     fwrite(seq, sizeof(byte), bytesz, file);
     delete[] seq;
@@ -137,6 +137,12 @@ void Bitmap::LoadFile()
     bmpheader hdr;
     bmpinfo inf;
     FILE* file = fopen(fileName.c_str(), "rb");
+
+    if (file == NULL)
+    {
+        throw bad_operation(std::string("can not open specified file: ") + fileName + ", " + strerror(errno));
+    }
+
     fread(&hdr, sizeof(hdr), 1, file);
     if (hdr.ident[0] != 'B' || hdr.ident[1] != 'M')
     {
@@ -152,7 +158,7 @@ void Bitmap::LoadFile()
     bit_count = inf.bit_count;
 
     if (inf.bit_count > 32) throw bad_format(fileName, ftell(file), "bit_count too large.");
-    word* qrgb = new word[1 << inf.bit_count];
+    word* qrgb = new word[static_cast<i64_t>(1) << inf.bit_count];
     Palette pl(1 << inf.bit_count);
     fread(qrgb, sizeof(word), static_cast<size_t>(1) << inf.bit_count, file);
     for (int i = 0; i < 1 << inf.bit_count; ++i)
@@ -164,20 +170,78 @@ void Bitmap::LoadFile()
     byte* data = new byte[height * ((inf.bit_count * width + 7) >> 3)];
     fseek(file, hdr.offset, SEEK_SET);
     fread(data, sizeof(byte), static_cast<size_t>(hdr.size) - hdr.offset, file);
-    if (pixels != nullptr) delete[] pixels;
+    if (pixels != nullptr) delete[] pixels; // drop old data
     pixels = new Pixel[Size()];
     int line = height - 1, col = 0;
     for (int i = 0; i < hdr.size - hdr.offset; ++i)
     {
-        if (inf.bit_count == 4)
+        if (inf.bit_count == 4) // TODO: add more support for bmp file
         {
-            SetPixel(line, col++, pl.GetColor(data[i] >> 4));
+            SetPixel(line, col++, pl.GetColor(data[i] >> 4)); // FIXME: caused out of range if col is odd
             SetPixel(line, col++, pl.GetColor(data[i] & 0xF));
-            if (col >= width) col = 0, line++;
-            if (line >= height) throw bad_format(fileName, ftell(file), "image out of declaired size.");
+            if (col >= width) col = 0, line--; // bmp stores from bottom to top
+            if (line < 0) throw bad_format(fileName, ftell(file), "image out of declaired size.");
         }
     }
     delete[] data;
 
     fclose(file);
+}
+
+//void Bitmap::LoadFile(const Palette& subpl) // FIXME: a copy of LoadFile(), merge them into one!
+//{
+//    bmpheader hdr;
+//    bmpinfo inf;
+//    FILE* file = fopen(fileName.c_str(), "rb");
+//
+//    if (file == NULL)
+//    {
+//        throw bad_operation(std::string("can not open specified file: ") + fileName + ", " + strerror(errno));
+//    }
+//
+//    fread(&hdr, sizeof(hdr), 1, file);
+//    if (hdr.ident[0] != 'B' || hdr.ident[1] != 'M')
+//    {
+//        throw bad_operation("not a valid bmp file to read.");
+//    }
+//    fread(&inf, sizeof(inf), 1, file);
+//    if (inf.bit_count != 4)
+//    {
+//        throw bad_format(fileName, ftell(file), "bit_count of bmp must be 4 (16 colours bitmap).");
+//    }
+//    width = inf.width;
+//    height = inf.height;
+//    bit_count = inf.bit_count;
+//
+//    if (inf.bit_count > 32) throw bad_format(fileName, ftell(file), "bit_count too large.");
+//    word* qrgb = new word[static_cast<i64_t>(1) << inf.bit_count];
+//
+//    byte* data = new byte[height * ((inf.bit_count * width + 7) >> 3)];
+//    fseek(file, hdr.offset, SEEK_SET);
+//    fread(data, sizeof(byte), static_cast<size_t>(hdr.size) - hdr.offset, file);
+//    if (pixels != nullptr) delete[] pixels; // drop old data
+//    pixels = new Pixel[Size()];
+//    int line = height - 1, col = 0;
+//    for (int i = 0; i < hdr.size - hdr.offset; ++i)
+//    {
+//        if (inf.bit_count == 4) // TODO: add more support for bmp file
+//        {
+//            SetPixel(line, col++, subpl.GetColor(data[i] >> 4)); // FIXME: caused out of range if col is odd
+//            SetPixel(line, col++, subpl.GetColor(data[i] & 0xF));
+//            if (col >= width) col = 0, line--; // bmp stores from bottom to top
+//            if (line < 0) throw bad_format(fileName, ftell(file), "image out of declaired size.");
+//        }
+//    }
+//    delete[] data;
+//
+//    fclose(file);
+//}
+
+void Bitmap::MapColor(const Palette& c2i, const Palette& i2c)
+{
+    int sz = Size();
+    for (int i = 0; i < sz; ++i)
+    {
+        SetPixel(i, i2c.GetColor(c2i.GetPaletteIndex(GetPixel(i))));
+    }
 }

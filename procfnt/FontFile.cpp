@@ -8,7 +8,7 @@ FontFile::FontFile()
 void FontFile::Init()
 {
 	memset(&header, 0, sizeof(header));
-	header.ukn1 = 0x10;
+	header.ukn1 = 0x10; // HACK: for all templates I recieved, these fields keeps 0x10(16), I'v no idea what they are
 	header.ukn2 = 0x10;
 	header.ukn3 = 0x10;
 
@@ -31,10 +31,67 @@ FontFile::~FontFile()
 	{
 		for (std::vector<FontTexture*>::iterator itr = textures[i]->begin(); itr != textures[i]->end(); ++itr)
 		{
-			delete* itr;
+			delete* itr; // delete contents
 		}
-		delete textures[i];
+		delete textures[i]; // delete container
 	}
+}
+
+void FontFile::SaveFile()
+{
+	header.palette_size = palette.Size();
+	header.size = 0;
+	for (int i = 0; i < 36; ++i)
+	{
+		header.size += textures[i]->size();
+	}
+	FILE* f = fopen(file_path.c_str(), "wb");
+
+	// fwrite(&header, sizeof(header), 1, f);
+	// size_t loc = ftell(f);
+	size_t loc = sizeof(font_header_t);
+	// size_t offset = 0;
+	for (int i = 0; i < 36; ++i)
+	{
+		header.texset[i].offset = loc;
+		header.texset[i].count = textures[i]->size();
+		loc += textures[i]->size() * sizeof(font_texture_t);
+	}
+
+	fwrite(&header, sizeof(header), 1, f);
+	size_t head_pos = ftell(f);
+
+	for (int i = 0; i < 36; ++i)
+	{
+		for (auto itr = textures[i]->begin(); itr != textures[i]->end(); ++itr)
+		{
+			fseek(f, head_pos, SEEK_SET);
+			font_texture_t inf = (*itr)->GetInfo();
+			inf.offset = loc;
+			fwrite(&inf, sizeof(font_texture_t), 1, f);
+			head_pos += sizeof(font_texture_t);
+
+			fseek(f, loc, SEEK_SET);
+			int leng;
+			byte* data = (*itr)->GetCompressedData(leng);
+			fwrite(data, sizeof(byte), leng, f);
+			loc += leng;
+			delete[] data;
+		}
+	}
+
+	int siz = palette.Size();
+	word* pix = new word[siz];
+	for (int i = 0; i < siz; ++i)
+	{
+		pix[i] = palette.GetColor(i).PackWord();
+	}
+	header.palette_offset = loc;
+	fwrite(pix, sizeof(word), palette.Size(), f);
+	fseek(f, 0, SEEK_SET);
+	fwrite(&header, sizeof(header), 1, f);
+
+	fclose(f);
 }
 
 static int bpp_calc(int palette_num) {
@@ -105,6 +162,26 @@ void FontFile::LoadFile()
 const std::vector<FontTexture*> FontFile::GetTextureGroup(int group)
 {
 	return *textures[group];
+}
+
+void FontFile::DropGroup(int group)
+{
+	for (auto itr = textures[group]->begin(); itr != textures[group]->end(); ++itr)
+	{
+		delete* itr;
+	}
+	textures[group]->clear();
+}
+
+void FontFile::AddTexture(int group, FontTexture* texture)
+{
+	textures[group]->push_back(texture);
+}
+
+void FontFile::GimmGroup(int group, std::vector<FontTexture*>* texs)
+{
+	if (nullptr != textures[group]) DropGroup(group);
+	textures[group] = texs;
 }
 
 Palette& FontFile::GetPalette()

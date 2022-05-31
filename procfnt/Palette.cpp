@@ -40,7 +40,7 @@ Pixel Palette::GetColor(int index) const
     return GetPixel(index);
 }
 
-void Palette::ExtractPalette(Graphic& g, int size)
+void Palette::ExtractPalette(const Graphic& g, int size)
 {
     std::set<Pixel> colours;
     for (int i = 0; i < g.Size(); ++i)

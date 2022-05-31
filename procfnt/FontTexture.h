@@ -30,7 +30,8 @@ class FontTexture
 	int size;
 public:
 	FontTexture();
-	FontTexture(Graphic& tex);
+	//FontTexture(Graphic& tex);
+	FontTexture(const Graphic& tex, const Palette& pl);
 	FontTexture(font_texture_t info, byte* compressedData, int bpp);
 
 	const font_texture_t &GetInfo() const;
@@ -38,6 +39,7 @@ public:
 	byte* GetCompressedData(int& length) const;
 
 	void UpdateTexture(const Graphic& g, const Palette& p);
+	//void UpdateTexture(const Graphic& g);
 
 	void GetTexture(Graphic& g, Palette& p) const;
 

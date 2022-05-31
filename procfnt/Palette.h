@@ -15,7 +15,7 @@ public:
 	bool IsInPalette(const Pixel& color) const;
 	int GetPaletteIndex(const Pixel& color) const;
 	Pixel GetColor(int index) const;
-	void ExtractPalette(Graphic& g, int size);
+	void ExtractPalette(const Graphic& g, int size);
 	void SaveFile();
 	void LoadFile();
 
