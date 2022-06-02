@@ -5,12 +5,12 @@ bad_operation::bad_operation(std::string p_message)
 	message = p_message;
 }
 
-std::string bad_operation::to_string()
+std::string bad_operation::ToString()
 {
 	return message;
 }
 
-const char* bad_operation::what()
-{
-	return to_string().c_str();
-}
+//const char* bad_operation::what()
+//{
+//	return to_string().c_str();
+//}

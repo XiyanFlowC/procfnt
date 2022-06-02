@@ -45,6 +45,9 @@
     <ClCompile Include="Bitmap.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="exception.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="liteopt.h">
@@ -78,6 +81,9 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Bitmap.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="exception.h">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

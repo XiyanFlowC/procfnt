@@ -6,12 +6,12 @@ bad_parameter::bad_parameter(std::string param, std::string msg)
 	message = msg;
 }
 
-std::string bad_parameter::to_string()
+std::string bad_parameter::ToString()
 {
 	return std::string("Parameter ") + paraName + " failure: " + message + "\n";
 }
 
-const char* bad_parameter::what()
-{
-	return to_string().c_str();
-}
+//const char* bad_parameter::what()
+//{
+//	return to_string().c_str();
+//}

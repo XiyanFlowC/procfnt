@@ -1,8 +1,8 @@
 #pragma once
-#include <exception>
+#include "exception.h"
 #include <string>
 
-class bad_format : std::exception
+class bad_format : exception
 {
 protected:
 	std::string file;
@@ -15,8 +15,8 @@ public:
 
 	bad_format(std::string fileName, size_t offset, std::string message);
 
-	std::string to_string();
+	std::string ToString();
 
-	const char* what();
+	// const char* what();
 };
 

@@ -1,9 +1,9 @@
 #pragma once
-#include <exception>
+#include "exception.h"
 #include <string>
 #include <iostream>
 
-class bad_parameter : public std::exception
+class bad_parameter : public exception
 {
 protected:
 	std::string message;
@@ -11,8 +11,8 @@ protected:
 public:
 	bad_parameter(std::string param, std::string msg);
 
-	std::string to_string();
+	std::string ToString();
 
-	const char* what();
+	//const char* what();
 };
 

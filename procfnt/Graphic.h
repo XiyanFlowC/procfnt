@@ -35,6 +35,7 @@ public:
 
 	void Paste(int u, int v, Graphic& g);
 	Graphic* Extract(int u, int v, int w, int h) const;
+	void Resize(int new_w, int new_h);
 
 	int Height() const;
 	int Width() const;

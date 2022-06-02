@@ -65,6 +65,22 @@ void FontFile::SaveFile()
 	{
 		for (auto itr = textures[i]->begin(); itr != textures[i]->end(); ++itr)
 		{
+			if (*itr == nullptr)
+			{
+				std::cerr << "Warning! Risk found when saving, for group " << i << ", a null texture detected! May cause failure of game. Check input files!\n";
+
+				font_texture_t inf
+				{
+					0xFFFD, 0x0, 0x0, 0x10, 0x0, 0x10, 0x0, 0x10, loc
+				};
+				fseek(f, head_pos, SEEK_SET);
+				fwrite(&inf, sizeof(inf), 1, f);
+				head_pos += sizeof(font_texture_t);
+
+				fseek(f, loc, SEEK_SET);
+				continue;
+			}
+
 			fseek(f, head_pos, SEEK_SET);
 			font_texture_t inf = (*itr)->GetInfo();
 			int leng;
@@ -109,7 +125,7 @@ void FontFile::LoadFile()
 	FILE* file = fopen(file_path.c_str(), "rb");
 	if (file == NULL)
 	{
-		throw bad_operation("can't open specified file.");
+		throw bad_operation(std::string("can't open specified file to read. file: ") + file_path + ", err: "+ strerror(errno));
 	}
 
 	fread(&header, sizeof(header), 1, file);
@@ -135,11 +151,11 @@ void FontFile::LoadFile()
 			}
 			catch (bad_parameter& e)
 			{
-				std::cerr << "format failure on group " << i << ", texture " << j << std::endl << e.to_string() << std::endl;
+				std::cerr << "format failure on group " << i << ", texture " << j << std::endl << e.ToString() << std::endl;
 			}
 			catch (bad_operation& e)
 			{
-				std::cerr << "unknown error, on group " << i << ", texture " << j << std::endl << e.to_string() << std::endl;
+				std::cerr << "unknown error, on group " << i << ", texture " << j << std::endl << e.ToString() << std::endl;
 			}
 			textures[i]->push_back(tex);
 			delete[] data;

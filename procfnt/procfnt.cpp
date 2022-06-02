@@ -104,7 +104,7 @@ int main(int argc, const char** argv)
             cfg_type = (cfg_type & ~0xc) | 0x4;
             return 0;
         });
-    lopt_regopt("save-as", 'v', 0, [](const char* param)->int
+    lopt_regopt("template", 't', 0, [](const char* param)->int
         {
             cfg_alternm = strdup(param);
             return 0;
@@ -206,7 +206,7 @@ int main(int argc, const char** argv)
     lopt_parse(argc, argv);
     lopt_finalize();
 
- //   try {
+    try {
         // opt check & err / warn
         if (cfg_infn == nullptr || cfg_outfn == nullptr)
         {
@@ -230,12 +230,16 @@ int main(int argc, const char** argv)
 
         if (cfg_mode == 1) // pack
         {
-            FontFile font(cfg_outfn);
+            FontFile font;
 
-            if (cfg_alternm != nullptr)
+            if (cfg_alternm != nullptr) // load template
             {
                 font.SetFilePath(cfg_alternm);
+                font.LoadFile();
             }
+            // else font.SubPalette(Palette(cfg_oripalette));
+            
+            font.SetFilePath(cfg_outfn);
 
             if ((cfg_type >> 10) & 1) // flag a
             {
@@ -291,11 +295,28 @@ int main(int argc, const char** argv)
                 ExtractGroup(font, (cfg_type >> 6) & 0x1F, pl);
             }
         }
- //   }
-//    catch (std::exception ex)
-//    {
-//        std::cerr << ex.what() << std::endl;
-//    }
+    }
+    catch (exception& ex)
+    {
+        std::cerr << "Top Level Exception Catcher: Exec failed\n===============\n" << ex.ToString() << std::endl;
+        exit(-15);
+    }
+    catch (bad_format& ex)
+    {
+        std::cerr << "Format Error\n==============\n" << ex.ToString() << std::endl;
+        exit(-9);
+    }
+    catch (bad_operation& bo)
+    {
+        std::cerr << "Operation Error\n==============\n" << bo.ToString() << std::endl;
+        exit(-10);
+    }
+    catch (std::exception& ex)
+    {
+        std::cerr << "std err, " << ex.what() << std::endl;
+        exit(-16);
+    }
+    return 0;
 }
 
 int GetNextCodePoint(FILE* f)
@@ -322,7 +343,7 @@ int GetNextCodePoint(FILE* f)
 
 void ImportGroup(FontFile& font, int grpidx)
 {
-    std::cout << "importing group" << grpidx << std::endl;
+    std::cout << "importing group " << grpidx << std::endl;
     FILE* code_list = fopen((std::string(cfg_infn) + "/grp_" + std::to_string(grpidx) + ".txt").c_str(),
         "rb");
 

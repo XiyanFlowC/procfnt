@@ -59,11 +59,11 @@ byte* FontTexture::GetCompressedData(int& length) const
 	unsigned long destLeng = size * 2;
 	byte* buffer = new byte[destLeng];
 	compress(buffer, &destLeng, data, size);
-	length = destLeng;
+	length = (destLeng + 0xF) & ~0xF;
 	return buffer;
 }
 
-void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // FIXME: only handled the 4bpp situ.
+void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // UNDONE: only handled the 4bpp situ.
 {
 	if (p.Size() != 16) throw bad_parameter("p", "palette must be 16 colours.");
 
@@ -78,6 +78,7 @@ void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // FIXME: on
 		data[i] = tmp;
 	}
 
+	info.tex_w = g.Width();
 	info.canv_h = g.Height() >> 1;
 	info.canv_w = g.Width() >> 1;
 }
