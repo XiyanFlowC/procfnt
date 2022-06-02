@@ -184,23 +184,26 @@ int main(int argc, const char** argv)
             std::cout << "ZLib Version: " << zlibVersion() << std::endl;
             std::cout << "--input              -i [file name] specify input file." << std::endl;
             std::cout << "--output             -o [file name] specify output file." << std::endl;
+            std::cout << "--template           -t [file name] specify template file. (valid only when repack)" << std::endl;
             std::cout << "--repack             -r pack the font." << std::endl;
             std::cout << "--unpack             -u unpack the font." << std::endl;
             std::cout << "--bmp                -b specify the output format as windows bmp file." << std::endl;
             std::cout << "--proc-grp           -g [group id] process the specified group." << std::endl;
             std::cout << "--proc-all           -a process all groups." << std::endl;
-            std::cout << "--block-width        -w [block width] specify the size of a single block in output picture." << std::endl;
-            std::cout << "--block-height       -h [block height] specify the size of a single block in output picture." << std::endl;
             std::cout << "--split              -s output seperately." << std::endl;
             std::cout << "--original-palette   -p [palette name] set the font file's palette." << std::endl;
             std::cout << "--substitude-palette -P [palette name] set the bmp file's palette." << std::endl;
+            std::cout << "--block-width        -w [block width] specify the size of a single block in output picture." << std::endl;
+            std::cout << "--block-height       -h [block height] specify the size of a single block in output picture." << std::endl;
             std::cout << "--canvas-width       -W [output file width] specify the size of output file." << std::endl;
             std::cout << "--canvas-height      -H [output file height] specify the size of output file." << std::endl;
             //std::cout << "--method  -m    specify the work method, see the document." << std::endl;
             std::cout << "--help               -? show this message." << std::endl;
             std::cout << "\nExample\n" <<
                 "\tprocfnt -abu -i fnt.bin -o ./font_ex/  # to all groups, output as bmp, unpack the file; input is fnt.bin and output directory is ./font_ex/" << std::endl;
-            std::cout << "\tprocfnt -bu -g 1 -i fnt.bin -o grp_1.bmp  # output as bmp, unpack the file; process group 1 only; input is fnt.bin and output is grp_1.bmp" << std::endl;
+            std::cout << "\tprocfnt -bu -g 1 -i fnt.bin -o ./  # output as bmp, unpack the file; process group 1 only; input is fnt.bin and output to ./" << std::endl;
+            std::cout << "\tprocfnt -br -g 1 -t fnt.bin -o out.bin -i ./ # the source format is bmp, repack the file, only modify the group 1, using fnt.bin as template, output to out.bin, using contents in ./ to repack." << std::endl;
+            std::cout << "\tprocfnt -bra -i ./ -o out.bin # the source format is bmp, repack the file, rebuild all groups, using contents in ./ as input, output to file out.bin" << std::endl;
             return 0;
         });
     lopt_parse(argc, argv);
@@ -343,10 +346,15 @@ int GetNextCodePoint(FILE* f)
 
 void ImportGroup(FontFile& font, int grpidx)
 {
-    std::cout << "importing group " << grpidx << std::endl;
     FILE* code_list = fopen((std::string(cfg_infn) + "/grp_" + std::to_string(grpidx) + ".txt").c_str(),
         "rb");
+    if (code_list == NULL)
+    {
+        std::cout << "cannot open definition file, skipping group " << grpidx << std::endl;
+        return;
+    }
 
+    std::cout << "importing group " << grpidx << std::endl;
     std::vector<FontTexture*>* grp = new std::vector<FontTexture*>();
     if ((cfg_type >> 2) & 1) // load seperately
     {
