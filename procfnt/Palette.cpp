@@ -19,6 +19,7 @@ Palette::Palette(int w) : Graphic(w, 1)
 
 Palette::Palette(std::string path) : Graphic(path)
 {
+    LoadFile();
 }
 
 bool Palette::IsInPalette(const Pixel& color) const
@@ -87,6 +88,7 @@ void Palette::LoadFile()
     fread(&hdr, sizeof(hdr), 1, f);
     if (pixels != nullptr) delete[] pixels;
     width = hdr.size;
+    height = 1;
     pixels = new Pixel[hdr.size];
     fread(pixels, sizeof(Pixel), hdr.size, f);
     fclose(f);

@@ -25,6 +25,7 @@ public:
 	void LoadFile(std::string fileName);
 
 	void SetFilePath(std::string filename);
+	std::string GetFilePath();
 
 	Pixel GetPixel(int index) const;
 	Pixel GetPixel(int u, int v) const;

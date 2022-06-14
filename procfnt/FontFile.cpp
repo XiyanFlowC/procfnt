@@ -91,6 +91,7 @@ void FontFile::SaveFile()
 			head_pos += sizeof(font_texture_t);
 
 			fseek(f, loc, SEEK_SET);
+			leng = (leng + 0xF) & ~0xF;
 			fwrite(data, sizeof(byte), leng, f);
 			loc += leng;
 			delete[] data;

@@ -59,7 +59,8 @@ byte* FontTexture::GetCompressedData(int& length) const
 	unsigned long destLeng = size * 2;
 	byte* buffer = new byte[destLeng];
 	compress(buffer, &destLeng, data, size);
-	length = (destLeng + 0xF) & ~0xF;
+	// length = (destLeng + 0xF) & ~0xF;
+	length = destLeng;
 	return buffer;
 }
 

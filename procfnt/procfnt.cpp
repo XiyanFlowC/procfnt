@@ -82,11 +82,13 @@ int main(int argc, const char** argv)
         });
     lopt_regopt("input", 'i', 0, [](const char* param)->int
         {
+            if (param == nullptr) return -1;
             cfg_infn = strdup(param);
             return 0;
         });
     lopt_regopt("output", 'o', 0, [](const char* param)->int
         {
+            if (param == nullptr) return -1;
             cfg_outfn = strdup(param);
             return 0;
         });
@@ -111,21 +113,25 @@ int main(int argc, const char** argv)
         });
     lopt_regopt("block-height", 'h', 0, [](const char* param)->int
         {
+            if (param == nullptr) return -1;
             if(sscanf(param, "%8d", &cfg_block_h) != 1) return -1;
             return 0;
         });
     lopt_regopt("canvas-height", 'H', 0, [](const char* param)->int
         {
+            if (param == nullptr) return -1;
             if (sscanf(param, "%8d", &cfg_outfile_h) != 1) return -1;
             return 0;
         });
     lopt_regopt("block-width", 'w', 0, [](const char* param)->int
         {
+            if (param == nullptr) return -1;
             if(sscanf(param, "%8d", &cfg_block_w) != -1) return -1;
             return 0;
         });
     lopt_regopt("canvas-width", 'W', 0, [](const char* param)->int
         {
+            if (param == nullptr) return -1;
             if (sscanf(param, "%8d", &cfg_outfile_h) != 1) return -1;
             return 0;
         });
@@ -244,7 +250,7 @@ int main(int argc, const char** argv)
             
             font.SetFilePath(cfg_outfn);
 
-            if ((cfg_type >> 10) & 1) // flag a
+            if ((cfg_type >> 11) & 1) // flag a
             {
                 for (int i = 0; i < 36; ++i)
                 {
@@ -256,7 +262,21 @@ int main(int argc, const char** argv)
                 ImportGroup(font, (cfg_type >> 6) & 0x1F);
             }
 
+            Palette* plt = nullptr;
+            if (cfg_oripalette != nullptr)
+            {
+                plt = new Palette(cfg_oripalette);
+                font.SubPalette(*plt);
+            }
+            else if (cfg_alternm == nullptr)
+            {
+                // UNDONE: Implemet the palette extraction from textures
+                std::cerr << "Cannot generate a palette, using -p to specify a palette to use." << std::endl;
+                exit(-15);
+            }
+
             font.SaveFile();
+            if (plt != nullptr) delete plt;
         }
         else // unpack
         {
@@ -334,7 +354,7 @@ int GetNextCodePoint(FILE* f)
         ch0 <<= 1;
         sz++;
     }
-    // sz -= 1;
+    sz -= 1;
 
     while (sz--)
     {
@@ -414,11 +434,6 @@ void ImportGroup(FontFile& font, int grpidx)
     // grp built up
     font.GimmGroup(grpidx, grp);
 
-    if (cfg_oripalette != nullptr)
-    {
-        Palette plt(cfg_oripalette);
-        font.SubPalette(plt);
-    }
     fclose(code_list);
 }
 

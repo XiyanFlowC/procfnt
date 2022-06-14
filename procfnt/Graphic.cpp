@@ -58,6 +58,11 @@ void Graphic::SetFilePath(std::string filename)
 	fileName = filename;
 }
 
+std::string Graphic::GetFilePath()
+{
+	return std::string(fileName);
+}
+
 Pixel Graphic::GetPixel(int index) const
 {
 	if (pixels == nullptr)

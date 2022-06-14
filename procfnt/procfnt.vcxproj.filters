@@ -24,9 +24,6 @@
     <ClCompile Include="FontTexture.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="Graphic.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="Palette.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -46,6 +43,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="exception.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphic.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
