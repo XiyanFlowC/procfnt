@@ -132,7 +132,7 @@ int main(int argc, const char** argv)
     lopt_regopt("canvas-width", 'W', 0, [](const char* param)->int
         {
             if (param == nullptr) return -1;
-            if (sscanf(param, "%8d", &cfg_outfile_h) != 1) return -1;
+            if (sscanf(param, "%8d", &cfg_outfile_w) != 1) return -1;
             return 0;
         });
     lopt_regopt("minimize-texture", 'x', 0, [](const char* param)->int
@@ -188,6 +188,7 @@ int main(int argc, const char** argv)
         {
             std::cout << "PES/WE 2014 Font File Batch Processor by xiyan" << std::endl;
             std::cout << "ZLib Version: " << zlibVersion() << std::endl;
+            std::cout << "This edition compiled for the header with " << FONT_TEX_GRP_NUMBER << " groups." << std::endl;
             std::cout << "--input              -i [file name] specify input file." << std::endl;
             std::cout << "--output             -o [file name] specify output file." << std::endl;
             std::cout << "--template           -t [file name] specify template file. (valid only when repack)" << std::endl;
@@ -252,7 +253,7 @@ int main(int argc, const char** argv)
 
             if ((cfg_type >> 11) & 1) // flag a
             {
-                for (int i = 0; i < 36; ++i)
+                for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
                 {
                     ImportGroup(font, i);
                 }
@@ -308,7 +309,7 @@ int main(int argc, const char** argv)
 
             if ((cfg_type >> 11) & 1) // flag a
             {
-                for (int i = 0; i < 36; ++i)
+                for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
                 {
                     ExtractGroup(font, i, pl);
                 }
@@ -348,18 +349,20 @@ int GetNextCodePoint(FILE* f)
     if (ch0 == EOF) return 0;
 
     int ret = ch0;
-    int sz = 0;
+    int sz = -1;
     while (ch0 & 0x80)
     {
         ch0 <<= 1;
         sz++;
     }
-    sz -= 1;
+    if (sz == -1) return ret;
 
     while (sz--)
     {
         ret <<= 8;
         ret |= fgetc(f);
+        //ch0 = fgetc(f);
+        //if (ch0 == EOF) throw bad_format("table file", ftell(f), std::string("Unexpected ending (last ch ") + std::to_string(sz));
     }
     return ret;
 }
@@ -405,6 +408,9 @@ void ImportGroup(FontFile& font, int grpidx)
         int codepoint;
         int line = 0, row = 0;
 
+        cfg_outfile_h = bm->Height();
+        cfg_outfile_w = bm->Width();
+
         Palette pl;
         if (nullptr != cfg_subpalette)
         {
@@ -424,6 +430,10 @@ void ImportGroup(FontFile& font, int grpidx)
 
             FontTexture* tex = new FontTexture(*gr, pl);
             tex->SetCodePoint(codepoint);
+            
+            // post proc
+            if (codepoint == ' ') tex->SetWidth(0xC);
+
             grp->push_back(tex);
             // std::cout << tex->GetConsoleDemo() << std::endl;
 

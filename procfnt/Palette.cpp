@@ -85,6 +85,9 @@ void Palette::LoadFile()
         word size;
     } hdr;
     FILE* f = fopen((fileName).c_str(), "rb");
+    if (f == NULL) {
+        throw bad_operation(std::string("Open specified file [") + fileName + "] failed, " + strerror(errno));
+    }
     fread(&hdr, sizeof(hdr), 1, f);
     if (pixels != nullptr) delete[] pixels;
     width = hdr.size;

@@ -9,6 +9,9 @@
 #include "bad_operation.h"
 #include "bad_format.h"
 
+#define FONT_TEX_GRP_NUMBER (36) // for ukn_645
+//#define FONT_TEX_GRP_NUMBER (0x36) // for ukn_060
+
 #pragma pack(push,1)
 struct font_header_t {
 	half size;
@@ -20,7 +23,7 @@ struct font_header_t {
 	struct {
 		word count;
 		word offset;
-	} texset[36];
+	} texset[FONT_TEX_GRP_NUMBER];
 };
 #pragma pack(pop)
 
@@ -30,7 +33,7 @@ class FontFile
 protected:
 	std::string file_path;
 	font_header_t header;
-	std::vector<FontTexture*>* textures[36];
+	std::vector<FontTexture*>* textures[FONT_TEX_GRP_NUMBER];
 	Palette palette;
 public:
 	/// <summary>

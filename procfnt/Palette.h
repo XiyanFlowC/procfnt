@@ -1,5 +1,6 @@
 #pragma once
 #include "Graphic.h"
+#include "bad_operation.h"
 #include <set>
 #include <stdio.h>
 

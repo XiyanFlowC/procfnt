@@ -39,6 +39,7 @@ public:
 	byte* GetCompressedData(int& length) const;
 
 	void UpdateTexture(const Graphic& g, const Palette& p);
+	void SetWidth(int width);
 	//void UpdateTexture(const Graphic& g);
 
 	void GetTexture(Graphic& g, Palette& p) const;

@@ -84,6 +84,11 @@ void FontTexture::UpdateTexture(const Graphic& g, const Palette& p) // UNDONE: o
 	info.canv_w = g.Width() >> 1;
 }
 
+void FontTexture::SetWidth(int width)
+{
+	info.tex_w = width;
+}
+
 //void FontTexture::UpdateTexture(const Graphic& g)
 //{
 //	Palette pl;

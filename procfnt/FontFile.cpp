@@ -12,7 +12,7 @@ void FontFile::Init()
 	header.ukn2 = 0x10;
 	header.ukn3 = 0x10;
 
-	for (int i = 0; i < 36; ++i)
+	for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
 	{
 		textures[i] = new std::vector<FontTexture*>();
 	}
@@ -27,7 +27,7 @@ FontFile::FontFile(std::string path)
 
 FontFile::~FontFile()
 {
-	for (int i = 0; i < 36; ++i)
+	for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
 	{
 		for (std::vector<FontTexture*>::iterator itr = textures[i]->begin(); itr != textures[i]->end(); ++itr)
 		{
@@ -41,7 +41,7 @@ void FontFile::SaveFile()
 {
 	header.palette_size = palette.Size();
 	header.size = 0;
-	for (int i = 0; i < 36; ++i)
+	for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
 	{
 		header.size += textures[i]->size();
 	}
@@ -51,7 +51,7 @@ void FontFile::SaveFile()
 	// size_t loc = ftell(f);
 	size_t loc = sizeof(font_header_t);
 	// size_t offset = 0;
-	for (int i = 0; i < 36; ++i)
+	for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
 	{
 		header.texset[i].offset = loc;
 		header.texset[i].count = textures[i]->size();
@@ -61,7 +61,7 @@ void FontFile::SaveFile()
 	fwrite(&header, sizeof(header), 1, f);
 	size_t head_pos = ftell(f);
 
-	for (int i = 0; i < 36; ++i)
+	for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
 	{
 		for (auto itr = textures[i]->begin(); itr != textures[i]->end(); ++itr)
 		{
@@ -131,7 +131,7 @@ void FontFile::LoadFile()
 
 	fread(&header, sizeof(header), 1, file);
 	int remain = header.size;
-	for (int i = 0; i < 36; ++i)
+	for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
 	{
 		if (header.texset[i].count == 0) continue;
 		remain -= header.texset[i].count;
