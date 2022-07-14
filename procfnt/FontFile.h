@@ -9,8 +9,8 @@
 #include "bad_operation.h"
 #include "bad_format.h"
 
-#define FONT_TEX_GRP_NUMBER (36) // for ukn_645
-//#define FONT_TEX_GRP_NUMBER (0x36) // for ukn_060
+//#define FONT_TEX_GRP_NUMBER (36) // for ukn_645
+#define FONT_TEX_GRP_NUMBER (0x36) // for ukn_060
 
 #pragma pack(push,1)
 struct font_header_t {

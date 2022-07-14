@@ -42,7 +42,7 @@ public:
 	void SetWidth(int width);
 	//void UpdateTexture(const Graphic& g);
 
-	void GetTexture(Graphic& g, Palette& p) const;
+	void GetTexture(Graphic& g, const Palette& p) const;
 
 	word GetCodePoint() const;
 

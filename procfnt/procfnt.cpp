@@ -38,9 +38,12 @@ extern "C" {
 * cfg_block_h cfg_block_w
 * when unpack/repack under the condition that cfg_type.m == 0, these configuration used to decade the texture
 * size taken in the big image.
+* 
+* cfg_pcidx
+* palette transparent colour index (for size cutting)
 */
 int cfg_mode = 0, cfg_type = 0, cfg_bitcount = 16, cfg_block_h = 16, cfg_block_w = 16, cfg_full_alpha = 128;
-int cfg_outfile_h = cfg_block_h * 64, cfg_outfile_w = cfg_block_w * 64;
+int cfg_outfile_h = cfg_block_h * 64, cfg_outfile_w = cfg_block_w * 64, cfg_pcidx = 0;
 const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpalette = nullptr, * cfg_oripalette = nullptr, * cfg_alternm = nullptr;
 
 #ifdef WIN32
@@ -65,6 +68,7 @@ void BlandPalette(Palette& pl, const Pixel& bgc)
 
 void ExtractGroup(FontFile& font, int grpidx, Palette pl);
 void ImportGroup(FontFile& font, int grpidx);
+int GraphicSizeReduce(Graphic** gr, const Palette& p);
 
 int main(int argc, const char** argv)
 {
@@ -184,11 +188,16 @@ int main(int argc, const char** argv)
             cfg_type = (cfg_type & ~0x20) | 0x20;
             return 0;
         });
+    lopt_regopt("cut-size", 'c', 0, [](const char* param)->int
+        {
+            cfg_type |= 0x8;
+            return 0;
+        });
     lopt_regopt("help", '?', 0, [](const char* param)->int
         {
             std::cout << "PES/WE 2014 Font File Batch Processor by xiyan" << std::endl;
             std::cout << "ZLib Version: " << zlibVersion() << std::endl;
-            std::cout << "This edition compiled for the header with " << FONT_TEX_GRP_NUMBER << " groups." << std::endl;
+            std::cout << "This edition compiled for the header holding " << FONT_TEX_GRP_NUMBER << " groups." << std::endl;
             std::cout << "--input              -i [file name] specify input file." << std::endl;
             std::cout << "--output             -o [file name] specify output file." << std::endl;
             std::cout << "--template           -t [file name] specify template file. (valid only when repack)" << std::endl;
@@ -204,6 +213,8 @@ int main(int argc, const char** argv)
             std::cout << "--block-height       -h [block height] specify the size of a single block in output picture." << std::endl;
             std::cout << "--canvas-width       -W [output file width] specify the size of output file." << std::endl;
             std::cout << "--canvas-height      -H [output file height] specify the size of output file." << std::endl;
+            std::cout << "--cut-size           -c Minimise the width of the output (pack only)." << std::endl;
+            //std::cout << "--cut-colour         -C [palette index] specify the colour index should be cutted." << std::endl;
             //std::cout << "--method  -m    specify the work method, see the document." << std::endl;
             std::cout << "--help               -? show this message." << std::endl;
             std::cout << "\nExample\n" <<
@@ -343,7 +354,7 @@ int main(int argc, const char** argv)
     return 0;
 }
 
-int GetNextCodePoint(FILE* f)
+int GetNextCodePoint(FILE* f) // not real code point of unicode, just a seq of UTF-8
 {
     int ch0 = fgetc(f);
     if (ch0 == EOF) return 0;
@@ -425,6 +436,9 @@ void ImportGroup(FontFile& font, int grpidx)
         while (codepoint = GetNextCodePoint(code_list))
         {
             Graphic* gr = bm->Extract(line, row, cfg_block_w, cfg_block_h); // TODO: add config file to determaine the w and h to control the gr size.
+            int w = 0;
+            if (cfg_type & 0x8)
+                w = GraphicSizeReduce(&gr, pl);
             row += cfg_block_w;
             if (row >= cfg_outfile_w) row = 0, line += cfg_block_h;
 
@@ -433,6 +447,8 @@ void ImportGroup(FontFile& font, int grpidx)
             
             // post proc
             if (codepoint == ' ') tex->SetWidth(0xC);
+            else if (w) tex->SetWidth(w);
+            else tex->SetWidth(0xF);
 
             grp->push_back(tex);
             // std::cout << tex->GetConsoleDemo() << std::endl;
@@ -548,13 +564,40 @@ void ExtractGroup(FontFile& font, int grpidx, Palette pl)
     fclose(code_list);
 }
 
-// 运行程序: Ctrl + F5 或调试 >“开始执行(不调试)”菜单
-// 调试程序: F5 或调试 >“开始调试”菜单
+#ifndef MIN(x, y)
+#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#endif
 
-// 入门使用技巧: 
-//   1. 使用解决方案资源管理器窗口添加/管理文件
-//   2. 使用团队资源管理器窗口连接到源代码管理
-//   3. 使用输出窗口查看生成输出和其他消息
-//   4. 使用错误列表窗口查看错误
-//   5. 转到“项目”>“添加新项”以创建新的代码文件，或转到“项目”>“添加现有项”以将现有代码文件添加到项目
-//   6. 将来，若要再次打开此项目，请转到“文件”>“打开”>“项目”并选择 .sln 文件
+int GraphicSizeReduce(Graphic** p_gr, const Palette& p) {
+    Graphic* gr = *p_gr;
+    int lm = 32, rm = -1, f = 0;
+
+    // find left & right edge
+    for (int i = 0; i < gr->Height(); ++i) {
+        for (int j = 0; j < gr->Width(); ++j) {
+            if (f) {
+                if (p.GetPaletteIndex(gr->GetPixel(i, j)) != cfg_pcidx) {
+                    rm = MAX(rm, j + 2);
+                }
+            }
+            else {
+                if (p.GetPaletteIndex(gr->GetPixel(i, j)) != cfg_pcidx) {
+                    f = 1;
+                    lm = MIN(lm, j - 1);
+                    rm = MAX(rm, j + 2);
+                }
+            }
+        }
+        f = 0;
+    }
+    if (rm == -1) return 0; // empty graphic
+
+    if (lm < 0) lm = 0;
+    if (rm > gr->Width()) rm = gr->Width(); // clamp
+
+    Graphic* ng = gr->Extract(lm, 0, (rm - lm + 7) & ~7, gr->Height()); // align to 8
+    *p_gr = ng;
+    delete gr;
+    return rm - lm;
+}

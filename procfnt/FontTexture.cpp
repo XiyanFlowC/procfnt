@@ -101,7 +101,7 @@ char toASCIIArt(int num)
 	return " 1OEM%$#~~~~~~~~"[num];
 }
 
-void FontTexture::GetTexture(Graphic& g, Palette& p) const
+void FontTexture::GetTexture(Graphic& g, const Palette& p) const
 {
 	std::vector<Pixel> tmp;
 	for (int i = 0; i < size; ++i) // FIXME: assumed all texture is 4bpp, enhance it!
