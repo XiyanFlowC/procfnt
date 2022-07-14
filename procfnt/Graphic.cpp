@@ -69,7 +69,7 @@ Pixel Graphic::GetPixel(int index) const
 	{
 		throw bad_operation("member pixels is not initialized.");
 	}
-	if (index >= Size()) throw bad_parameter("index", "index out of range.");
+	if (index >= Size()) throw bad_parameter("index", "index out of range. (index = " + std::to_string(index) + ")");
 	return pixels[index];
 }
 
@@ -84,7 +84,7 @@ void Graphic::SetPixel(int index, Pixel data)
 	{
 		throw bad_operation("pixels is not initialized.");
 	}
-	if (index >= Size()) throw bad_parameter("index", "index out of range");
+	if (index >= Size()) throw bad_parameter("index", "index out of range. (index = " + std::to_string(index) + ")");
 	pixels[index] = data;
 }
 

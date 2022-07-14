@@ -596,7 +596,7 @@ int GraphicSizeReduce(Graphic** p_gr, const Palette& p) {
     if (lm < 0) lm = 0;
     if (rm > gr->Width()) rm = gr->Width(); // clamp
 
-    Graphic* ng = gr->Extract(lm, 0, (rm - lm + 7) & ~7, gr->Height()); // align to 8
+    Graphic* ng = gr->Extract(0, lm, (rm - lm + 7) & ~7, gr->Height()); // align to 8
     *p_gr = ng;
     delete gr;
     return rm - lm;
