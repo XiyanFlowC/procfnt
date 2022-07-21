@@ -33,7 +33,7 @@ int Palette::GetPaletteIndex(const Pixel& color) const
     {
         if (pixels[i] == color) return i;
     }
-    return -1;
+    return 0;
 }
 
 Pixel Palette::GetColor(int index) const

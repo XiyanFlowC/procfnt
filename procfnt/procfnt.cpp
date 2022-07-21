@@ -2,6 +2,7 @@
 //
 #include <cstdio>
 #include <iostream>
+#include <map>
 
 // 请添加包含路径，以包含 zlib.h
 extern "C" {
@@ -20,10 +21,10 @@ extern "C" {
 * |~~~~~   r     |a|    g    |X|x| m | t |
 * +==*==*--------+-+-----*---+-+-+---+---+
 * x: save the flag whether cut the texture size from the block size when pack (if width less than 8, cut down
-* m: save the mode
+* m: save mode
 *   0 - nothing special
 *   1 - save textures seperately (in the output folder
-*   2 - unused
+*   2 - save textures in a large canvas, while generating an import script.
 *   3 - unused
 * t: save the output type
 *   0 - output nothing (for test)
@@ -44,7 +45,9 @@ extern "C" {
 */
 int cfg_mode = 0, cfg_type = 0, cfg_bitcount = 16, cfg_block_h = 16, cfg_block_w = 16, cfg_full_alpha = 128;
 int cfg_outfile_h = cfg_block_h * 64, cfg_outfile_w = cfg_block_w * 64, cfg_pcidx = 0;
+int cfg_lb = 1, cfg_rb = 1;
 const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpalette = nullptr, * cfg_oripalette = nullptr, * cfg_alternm = nullptr;
+std::map<int, int> cfg_width;
 
 #ifdef WIN32
 #define strdup _strdup
@@ -68,11 +71,17 @@ void BlandPalette(Palette& pl, const Pixel& bgc)
 
 void ExtractGroup(FontFile& font, int grpidx, Palette pl);
 void ImportGroup(FontFile& font, int grpidx);
-int GraphicSizeReduce(Graphic** gr, const Palette& p);
+int GraphicSizeReduce(Graphic** p_gr, const Palette& p, int lb, int rb);
+int proc_script(const char* filename);
+void Execute();
 
 int main(int argc, const char** argv)
 {
-    std::cout << argv[0] << std::endl;
+    //std::cout << argv[0] << std::endl;
+    if (argc == 2) // script parsing mode
+    {
+        return proc_script(argv[1]);
+    }
 
     lopt_regopt("repack", 'r', 0, [](const char* param)->int
         {
@@ -88,6 +97,13 @@ int main(int argc, const char** argv)
         {
             if (param == nullptr) return -1;
             cfg_infn = strdup(param);
+            return 0;
+        });
+    lopt_regopt("define", 'd', 0, [](const char* param)->int
+        {
+            int codepoint, w;
+            sscanf(param, "%d,%d", &codepoint, &w);
+            cfg_width[codepoint] = w;
             return 0;
         });
     lopt_regopt("output", 'o', 0, [](const char* param)->int
@@ -249,87 +265,7 @@ int main(int argc, const char** argv)
             exit(-1);
         }
 
-        if (cfg_mode == 1) // pack
-        {
-            FontFile font;
-
-            if (cfg_alternm != nullptr) // load template
-            {
-                font.SetFilePath(cfg_alternm);
-                font.LoadFile();
-            }
-            // else font.SubPalette(Palette(cfg_oripalette));
-            
-            font.SetFilePath(cfg_outfn);
-
-            if ((cfg_type >> 11) & 1) // flag a
-            {
-                for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
-                {
-                    ImportGroup(font, i);
-                }
-            }
-            else
-            {
-                ImportGroup(font, (cfg_type >> 6) & 0x1F);
-            }
-
-            Palette* plt = nullptr;
-            if (cfg_oripalette != nullptr)
-            {
-                plt = new Palette(cfg_oripalette);
-                font.SubPalette(*plt);
-            }
-            else if (cfg_alternm == nullptr)
-            {
-                // UNDONE: Implemet the palette extraction from textures
-                std::cerr << "Cannot generate a palette, using -p to specify a palette to use." << std::endl;
-                exit(-15);
-            }
-
-            font.SaveFile();
-            if (plt != nullptr) delete plt;
-        }
-        else // unpack
-        {
-            FontFile font(cfg_infn);
-
-            if (!((cfg_type >> 5) & 1)) // not rbga palette
-            {
-                BlandPalette(font.GetPalette(), Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
-            }
-
-            if (cfg_oripalette != nullptr) // to save original (font file) palette
-            {
-                auto& pl = font.GetPalette();
-
-                pl.SetFilePath(cfg_oripalette);
-                pl.SaveFile();
-            }
-
-            Palette pl;
-            if (cfg_subpalette != nullptr) // to substitude original palette to save other colors
-            {
-                pl.SetFilePath(cfg_subpalette);
-                pl.LoadFile();
-            }
-            else
-            {
-                pl = font.GetPalette();
-            }
-
-            if ((cfg_type >> 11) & 1) // flag a
-            {
-                for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
-                {
-                    ExtractGroup(font, i, pl);
-                }
-            }
-            else
-            {
-                ExtractGroup(font, (cfg_type >> 6) & 0x1F, pl);
-            }
-        }
+        Execute();
     }
     catch (exception& ex)
     {
@@ -438,7 +374,7 @@ void ImportGroup(FontFile& font, int grpidx)
             Graphic* gr = bm->Extract(line, row, cfg_block_w, cfg_block_h); // TODO: add config file to determaine the w and h to control the gr size.
             int w = 0;
             if (cfg_type & 0x8)
-                w = GraphicSizeReduce(&gr, pl);
+                w = GraphicSizeReduce(&gr, pl, cfg_lb, cfg_rb);
             row += cfg_block_w;
             if (row >= cfg_outfile_w) row = 0, line += cfg_block_h;
 
@@ -446,9 +382,14 @@ void ImportGroup(FontFile& font, int grpidx)
             tex->SetCodePoint(codepoint);
             
             // post proc
-            if (codepoint == ' ') tex->SetWidth(0xC);
-            else if (w) tex->SetWidth(w);
-            else tex->SetWidth(0xF);
+            //if (codepoint == ' ') tex->SetWidth(0x5); // TODO: remove these special cases!
+            ////else if (codepoint >= '0' && codepoint <= '9') tex->SetWidth(0xA);
+            //else if (w) tex->SetWidth(w);
+            //else tex->SetWidth(0xF);
+            if (cfg_width.find(codepoint) != cfg_width.end())
+                tex->SetWidth(cfg_width[codepoint]);
+            else
+                tex->SetWidth(w ? w : cfg_block_w);
 
             grp->push_back(tex);
             // std::cout << tex->GetConsoleDemo() << std::endl;
@@ -528,6 +469,13 @@ void ExtractGroup(FontFile& font, int grpidx, Palette pl)
     }
     if (g == nullptr) return;
     g->SetFilePath(std::string(cfg_outfn) + "/grp_" + std::to_string(grpidx) + ".bmp");
+    FILE* scr = nullptr;
+
+    if ((cfg_type >> 3) & 1) // script output
+    {
+        scr = fopen((g->GetFilePath() + ".imp.txt").c_str(), "w");
+        fprintf(scr, "%d {\n", grpidx);
+    }
 
     int u = 0, v = 0;
     for (int i = 0; i < grp.size(); ++i)
@@ -552,24 +500,34 @@ void ExtractGroup(FontFile& font, int grpidx, Palette pl)
             cp = (cp << 8) | (cpr & 0xff);
             cpr >>= 8;
         }
+        if (scr) fputc(':', scr);
         while (cp)
         {
             fputc((char)(cp & 0xff), code_list);
+            if(scr) fputc((char)(cp & 0xff), scr);
             cp >>= 8;
         }
+        if (scr) fprintf(scr, " w %d, height %d, width %d;\n", grp[i]->GetInfo().tex_w, grp[i]->GetInfo().canv_h << 1, grp[i]->GetInfo().canv_w << 1);
         delete part;
+    }
+    if (scr)
+    {
+        fputc('}', scr);
+        fclose(scr);
     }
     g->SaveFile();
     delete g;
     fclose(code_list);
 }
 
-#ifndef MIN(x, y)
+#ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-int GraphicSizeReduce(Graphic** p_gr, const Palette& p) {
+int GraphicSizeReduce(Graphic** p_gr, const Palette& p, int lb, int rb) {
+    rb += 1;
+
     Graphic* gr = *p_gr;
     int lm = 32, rm = -1, f = 0;
 
@@ -578,14 +536,14 @@ int GraphicSizeReduce(Graphic** p_gr, const Palette& p) {
         for (int j = 0; j < gr->Width(); ++j) {
             if (f) {
                 if (p.GetPaletteIndex(gr->GetPixel(i, j)) != cfg_pcidx) {
-                    rm = MAX(rm, j + 2);
+                    rm = MAX(rm, j + rb);
                 }
             }
             else {
                 if (p.GetPaletteIndex(gr->GetPixel(i, j)) != cfg_pcidx) {
                     f = 1;
-                    lm = MIN(lm, j - 1);
-                    rm = MAX(rm, j + 2);
+                    lm = MIN(lm, j - lb);
+                    rm = MAX(rm, j + rb);
                 }
             }
         }
@@ -593,6 +551,7 @@ int GraphicSizeReduce(Graphic** p_gr, const Palette& p) {
     }
     if (rm == -1) return 0; // empty graphic
 
+    //lm = 0;
     if (lm < 0) lm = 0;
     if (rm > gr->Width()) rm = gr->Width(); // clamp
 
@@ -600,4 +559,436 @@ int GraphicSizeReduce(Graphic** p_gr, const Palette& p) {
     *p_gr = ng;
     delete gr;
     return rm - lm;
+}
+
+void RunScript(FILE* scr)
+{
+    FontFile font;
+
+    if (cfg_alternm != nullptr) // load template
+    {
+        font.SetFilePath(cfg_alternm);
+        font.LoadFile();
+    }
+
+    font.SetFilePath(cfg_outfn);
+
+    if (cfg_mode == 1) // repack
+    {
+        while ((1))
+        {
+            std::vector<FontTexture*>* grp = new std::vector<FontTexture*>();
+            int grpidx;
+            fscanf(scr, "%d{", &grpidx);
+
+            std::cout << "manapulating group " << grpidx << std::endl;
+            int cp = GetNextCodePoint(scr);
+            Bitmap* bm = new Bitmap(std::string(cfg_infn) + "/grp_" + std::to_string(grpidx) + ".bmp");
+            
+            int line = 0, row = 0;
+
+            cfg_outfile_h = bm->Height();
+            cfg_outfile_w = bm->Width();
+
+            Palette pl;
+            if (nullptr != cfg_subpalette)
+            {
+                pl.SetFilePath(cfg_subpalette);
+                pl.LoadFile();
+            }
+            else
+            {
+                pl = font.GetPalette(); // TODO: get palette from bmp will be better
+            }
+
+            while (cp && cp != ':' && cp != '}') cp = GetNextCodePoint(scr);
+            if (cp == '}')
+            {
+                font.GimmGroup(grpidx, grp);
+                delete bm;
+            }
+            if (cp == 0)
+            {
+                std::cerr << "EOF reached. but group still opening." << std::endl;
+                break;
+            }
+            cp = GetNextCodePoint(scr);
+
+            char arg[16];
+            int para;
+            int pflg = 1;
+            int width = cfg_block_w, height = cfg_block_h;
+            int u = row, v = line, w = (cfg_type & 0x8) ? 0 : width;
+            int lb = cfg_lb, rb = cfg_rb;
+            while (pflg)
+            {
+                if (fscanf(scr, "%16s %d", arg, &para) != 2)
+                {
+                    std::cerr << "invalid syntax near location " << ftell(scr) << std::endl;
+                }
+
+                if (strcmp(arg, "w") == 0)
+                {
+                    w = para;
+                }
+                else if (strcmp(arg, "width") == 0)
+                {
+                    width = para;
+                }
+                else if (strcmp(arg, "height") == 0)
+                {
+                    height = para;
+                }
+                else if (strcmp(arg, "u") == 0)
+                {
+                    u = para;
+                }
+                else if (strcmp(arg, "v") == 0)
+                {
+                    v = para;
+                }
+                else if (strcmp(arg, "lb") == 0)
+                {
+                    lb = para;
+                }
+                else if (strcmp(arg, "rb") == 0)
+                {
+                    rb = para;
+                }
+
+                int tmp = fgetc(scr);
+                while (tmp != ',' && tmp != ';') tmp = fgetc(scr);
+                if (tmp == ';') pflg = 0;
+            }
+            Graphic* gr = bm->Extract(v, u, width, height);
+            row += cfg_block_w;
+            if (row >= cfg_outfile_w) row = 0, line += cfg_block_h;
+
+            w = w ? w : GraphicSizeReduce(&gr, pl, lb, rb);
+
+            FontTexture* tex = new FontTexture(*gr, pl);
+            tex->SetCodePoint(cp);
+            tex->SetWidth(w);
+
+            delete gr;
+        }
+
+        // end of proc
+        Palette* plt = nullptr;
+        if (cfg_oripalette != nullptr)
+        {
+            plt = new Palette(cfg_oripalette);
+            font.SubPalette(*plt);
+        }
+        else if (cfg_alternm == nullptr)
+        {
+            // UNDONE: Implemet the palette extraction from textures
+            std::cerr << "Cannot generate a palette, using -p to specify a palette to use." << std::endl;
+            exit(-15);
+        }
+
+        font.SaveFile();
+        if (plt != nullptr) delete plt;
+    }
+}
+
+int proc_script(const char* filename)
+{
+    // cfg_type = (cfg_type & ~0x3) | 0x1; // for now, only bmp available
+    FILE* scr = fopen(filename, "r");
+    char linebuf[1024];
+    linebuf[1023] = '\0';
+    while (fscanf(scr, "%1024s", linebuf) != EOF)
+    {
+        if (strcmp("let", linebuf) == 0)
+        {
+            int param;
+            if (fscanf(scr, "%s %d", linebuf, &param) != 2)
+            {
+                fputs("let: invalid syntax.\n", stderr);
+                return -100;
+            }
+
+            if (strcmp(linebuf, "mode") == 0)
+            {
+                cfg_mode = param;
+            }
+            else if (strcmp(linebuf, "type") == 0)
+            {
+                cfg_type = param;
+            }
+            else if (strcmp(linebuf, "cell-height") == 0)
+            {
+                cfg_block_h = param;
+            }
+            else if (strcmp(linebuf, "cell-width") == 0)
+            {
+                cfg_block_w = param;
+            }
+            else if (strcmp(linebuf, "output-canvas-height") == 0)
+            {
+                cfg_outfile_h = param;
+            }
+            else if (strcmp(linebuf, "output-canvas-width") == 0)
+            {
+                cfg_outfile_w = param;
+            }
+            else if (strcmp(linebuf, "full-alpha") == 0)
+            {
+                cfg_full_alpha = param;
+            }
+            else if (strcmp(linebuf, "process-group") == 0)
+            {
+                cfg_type = (cfg_type & ~0x7c0) | ((param & 0x1f) << 6);
+            }
+            else if (strcmp(linebuf, "left-blank") == 0)
+            {
+                cfg_lb = param;
+            }
+            else if (strcmp(linebuf, "right-blank") == 0)
+            {
+                cfg_rb = param;
+            }
+            else
+            {
+                fprintf(stderr, "invalid argument name: %s\n", linebuf);
+            }
+        }
+        else if (strcmp(linebuf, "set"))
+        {
+            char param[512];
+            param[511] = '\0';
+            if (fscanf(scr, "%s %s", linebuf, param) != 2)
+            {
+                fputs("set: invalid syntax.\n", stderr);
+                return -100;
+            }
+
+            if (strcmp(linebuf, "input") == 0)
+            {
+                cfg_infn = strdup(param);
+            }
+            else if (strcmp(linebuf, "output") == 0)
+            {
+                cfg_outfn = strdup(param);
+            }
+            else if (strcmp(linebuf, "template") == 0)
+            {
+                cfg_alternm = strdup(param);
+            }
+            else if (strcmp(linebuf, "original-palette") == 0)
+            {
+                if (cfg_mode != 2)
+                {
+                    fputs("set: original-palette only make sence when unpacking.\n", stderr);
+                    fprintf(stderr, "[note] need mode = 2, but mode = %d\n", cfg_mode);
+                    return -101;
+                }
+                cfg_oripalette = strdup(param);
+            }
+            else if (strcmp(linebuf, "substituting-palette") == 0)
+            {
+                if (cfg_mode == 0)
+                {
+                    fputs("set: substituting-palette only work after a mode is set.\n", stderr);
+                    return -101;
+                }
+                if (cfg_mode == 2)
+                    cfg_subpalette = strdup(param);
+                else if (cfg_mode == 1)
+                    cfg_oripalette = strdup(param);
+            }
+            else if (strcmp(linebuf, "bmp-explaining-palette") == 0)
+            {
+                if (cfg_mode != 2)
+                {
+                    fputs("set: bmp-explaining-palette only make sence when repacking.\n", stderr);
+                    fprintf(stderr, "[note] need mode = 1, but mode = %d\n", cfg_mode);
+                    return -101;
+                }
+                cfg_subpalette = strdup(param);
+            }
+            else if (strcmp(linebuf, "output-method") == 0)
+            {
+                if (strcmp(param, "single") == 0)
+                {
+                    cfg_type = cfg_type & ~0xC;
+                }
+                else if (strcmp(param, "multiple") == 0)
+                {
+                    cfg_type = (cfg_type & ~0xC) | 0x4;
+                }
+                else if (strcmp(param, "script") == 0)
+                {
+                    cfg_type = (cfg_type & ~0xC) | 0x8;
+                }
+                else
+                {
+                    fputs("only single|multiple|script acceptable.\n", stderr);
+                }
+            }
+            else
+            {
+                fprintf(stderr, "invalid argument name: %s\n", linebuf);
+            }
+        }
+        else if (strcmp(linebuf, "flag") == 0)
+        {
+            if (fscanf(scr, "%s", linebuf) != 1)
+            {
+                fputs("flag: invalid syntax.\n", stderr);
+            }
+            
+            if (strcmp(linebuf, "minimize-texture") == 0)
+            {
+                cfg_type = (cfg_type & ~0x10) | 0x10;
+            }
+            else if (strcmp(linebuf, "bmp-reserve-as-alpha") == 0)
+            {
+                cfg_type == (cfg_type & ~0x20) | 0x20;
+            }
+            else if (strcmp(linebuf, "cut-size") == 0)
+            {
+                cfg_type |= 0x8;
+            }
+            else if (strcmp(linebuf, "process-all-groups") == 0)
+            {
+                cfg_type = (cfg_type & ~0x800) | 0x800;
+            }
+            else if (strcmp(linebuf, "using-bmp") == 0)
+            {
+                cfg_type = (cfg_type & ~0x3) | 0x1;
+            }
+            else if (strcmp(linebuf, "repack") == 0)
+            {
+                if (cfg_mode)
+                {
+                    fprintf(stderr, "flag: mode have been set already!\n");
+                    return -101;
+                }
+                cfg_mode = 1;
+            }
+            else if (strcmp(linebuf, "unpack") == 0)
+            {
+                if (cfg_mode)
+                {
+                    fprintf(stderr, "flag: mode have been set already!\n");
+                    return -101;
+                }
+                cfg_mode = 2;
+            }
+        }
+        else if (strcmp(linebuf, "execute"))
+        {
+            Execute();
+        }
+        /*else if (strcmp(linebuf, "export-group"))
+        {
+            int grp = -1;
+            fscanf(scr, "%d", &grp);
+            ExtractGroup(grp);
+        }*/
+        else if (strcmp(linebuf, "run-script"))
+        {
+            RunScript(scr);
+        }
+        else if (strcmp(linebuf, "def"))
+        {
+            int cp = GetNextCodePoint(scr);
+            while (cp != ':') cp = GetNextCodePoint(scr);
+            cp = GetNextCodePoint(scr);
+            int w;
+            fscanf(scr, "%d", &w);
+            cfg_width[cp] = w;
+        }
+        else if (strcmp(linebuf, "make-preview"))
+        {
+            //TODO: make preview picture
+        }
+    }
+}
+
+void Execute()
+{
+    if (cfg_mode == 1) // pack
+    {
+        FontFile font;
+
+        if (cfg_alternm != nullptr) // load template
+        {
+            font.SetFilePath(cfg_alternm);
+            font.LoadFile();
+        }
+        // else font.SubPalette(Palette(cfg_oripalette));
+
+        font.SetFilePath(cfg_outfn);
+
+        if ((cfg_type >> 11) & 1) // flag a
+        {
+            for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
+            {
+                ImportGroup(font, i);
+            }
+        }
+        else
+        {
+            ImportGroup(font, (cfg_type >> 6) & 0x1F);
+        }
+
+        Palette* plt = nullptr;
+        if (cfg_oripalette != nullptr)
+        {
+            plt = new Palette(cfg_oripalette);
+            font.SubPalette(*plt);
+        }
+        else if (cfg_alternm == nullptr)
+        {
+            // UNDONE: Implemet the palette extraction from textures
+            std::cerr << "Cannot generate a palette, using -p to specify a palette to use." << std::endl;
+            exit(-15);
+        }
+
+        font.SaveFile();
+        if (plt != nullptr) delete plt;
+    }
+    else // unpack
+    {
+        FontFile font(cfg_infn);
+
+        if (!((cfg_type >> 5) & 1)) // not rbga palette
+        {
+            BlandPalette(font.GetPalette(), Pixel(0, 0, 0, 0)); // bland with black to get rid of alpha ch.
+        }
+
+        if (cfg_oripalette != nullptr) // to save original (font file) palette
+        {
+            auto& pl = font.GetPalette();
+
+            pl.SetFilePath(cfg_oripalette);
+            pl.SaveFile();
+        }
+
+        Palette pl;
+        if (cfg_subpalette != nullptr) // to substitude original palette to save other colors
+        {
+            pl.SetFilePath(cfg_subpalette);
+            pl.LoadFile();
+        }
+        else
+        {
+            pl = font.GetPalette();
+        }
+
+        if ((cfg_type >> 11) & 1) // flag a
+        {
+            for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
+            {
+                ExtractGroup(font, i, pl);
+            }
+        }
+        else
+        {
+            ExtractGroup(font, (cfg_type >> 6) & 0x1F, pl);
+        }
+    }
 }
