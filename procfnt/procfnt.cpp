@@ -206,7 +206,7 @@ int main(int argc, const char** argv)
         });
     lopt_regopt("cut-size", 'c', 0, [](const char* param)->int
         {
-            cfg_type |= 0x8;
+            cfg_type |= 0x10;
             return 0;
         });
     lopt_regopt("help", '?', 0, [](const char* param)->int
@@ -373,7 +373,7 @@ void ImportGroup(FontFile& font, int grpidx)
         {
             Graphic* gr = bm->Extract(line, row, cfg_block_w, cfg_block_h); // TODO: add config file to determaine the w and h to control the gr size.
             int w = 0;
-            if (cfg_type & 0x8)
+            if (cfg_type & 0x10)
                 w = GraphicSizeReduce(&gr, pl, cfg_lb, cfg_rb);
             row += cfg_block_w;
             if (row >= cfg_outfile_w) row = 0, line += cfg_block_h;
@@ -618,7 +618,7 @@ void RunScript(FILE* scr)
             int para;
             int pflg = 1;
             int width = cfg_block_w, height = cfg_block_h;
-            int u = row, v = line, w = (cfg_type & 0x8) ? 0 : width;
+            int u = row, v = line, w = (cfg_type & 0x10) ? 0 : width;
             int lb = cfg_lb, rb = cfg_rb;
             while (pflg)
             {
@@ -849,7 +849,7 @@ int proc_script(const char* filename)
             }
             else if (strcmp(linebuf, "cut-size") == 0)
             {
-                cfg_type |= 0x8;
+                cfg_type |= 0x10;
             }
             else if (strcmp(linebuf, "process-all-groups") == 0)
             {
