@@ -116,6 +116,23 @@ void Graphic::Paste(int u, int v, Graphic& g)
 			SetPixel(u + i, v + j, g.GetPixel(i, j));
 }
 
+void Graphic::Paint(int u, int v, const Graphic& g, int full_alpha)
+{
+#define ALPHA_CALC_PF(t, bg, val) ((t).val = (t).val * (t).alpha / full_alpha + (bg).val * (full_alpha - (t).alpha) / full_alpha)
+	for (int i = 0; i < g.height; ++i)
+		for (int j = 0; j < g.width; ++j)
+		{
+			Pixel p = g.GetPixel(i, j);
+			Pixel bgc = GetPixel(u + i, v + j);
+			ALPHA_CALC_PF(p, bgc, red);
+			ALPHA_CALC_PF(p, bgc, blue);
+			ALPHA_CALC_PF(p, bgc, green);
+			p.alpha = bgc.alpha;
+			SetPixel(u + i, v + j, p);
+		}
+#undef ALPHA_CALC_PF
+}
+
 Graphic* Graphic::Extract(int u, int v, int w, int h) const
 {
 	Graphic* ret = new Graphic(w, h);

@@ -698,7 +698,7 @@ int proc_script(const char* filename)
     FILE* scr = fopen(filename, "r");
     char linebuf[1024];
     linebuf[1023] = '\0';
-    while (fscanf(scr, "%1024s", linebuf) != EOF)
+    while (fscanf(scr, "%1023s", linebuf) != EOF)
     {
         if (strcmp("let", linebuf) == 0)
         {
@@ -754,7 +754,7 @@ int proc_script(const char* filename)
                 fprintf(stderr, "invalid argument name: %s\n", linebuf);
             }
         }
-        else if (strcmp(linebuf, "set"))
+        else if (strcmp(linebuf, "set") == 0)
         {
             char param[512];
             param[511] = '\0';
@@ -800,7 +800,7 @@ int proc_script(const char* filename)
             }
             else if (strcmp(linebuf, "bmp-explaining-palette") == 0)
             {
-                if (cfg_mode != 2)
+                if (cfg_mode != 1)
                 {
                     fputs("set: bmp-explaining-palette only make sence when repacking.\n", stderr);
                     fprintf(stderr, "[note] need mode = 1, but mode = %d\n", cfg_mode);
@@ -845,7 +845,7 @@ int proc_script(const char* filename)
             }
             else if (strcmp(linebuf, "bmp-reserve-as-alpha") == 0)
             {
-                cfg_type == (cfg_type & ~0x20) | 0x20;
+                cfg_type = (cfg_type & ~0x20) | 0x20;
             }
             else if (strcmp(linebuf, "cut-size") == 0)
             {
@@ -878,7 +878,7 @@ int proc_script(const char* filename)
                 cfg_mode = 2;
             }
         }
-        else if (strcmp(linebuf, "execute"))
+        else if (strcmp(linebuf, "execute") == 0)
         {
             Execute();
         }
@@ -888,11 +888,11 @@ int proc_script(const char* filename)
             fscanf(scr, "%d", &grp);
             ExtractGroup(grp);
         }*/
-        else if (strcmp(linebuf, "run-script"))
+        else if (strcmp(linebuf, "run-script") == 0)
         {
             RunScript(scr);
         }
-        else if (strcmp(linebuf, "def"))
+        else if (strcmp(linebuf, "def") == 0)
         {
             int cp = GetNextCodePoint(scr);
             while (cp != ':') cp = GetNextCodePoint(scr);
@@ -901,11 +901,53 @@ int proc_script(const char* filename)
             fscanf(scr, "%d", &w);
             cfg_width[cp] = w;
         }
-        else if (strcmp(linebuf, "make-preview"))
+        else if (strcmp(linebuf, "make-preview") == 0)
         {
-            //TODO: make preview picture
+            std::cout << "making font preview form file " << cfg_outfn << std::endl;
+            FontFile font(cfg_outfn);
+            std::map<int, FontTexture*> mapping;
+
+            std::cout << "build codepoint-texture mapping..." << std::endl;
+            for (int i = 0; i < FONT_TEX_GRP_NUMBER; ++i)
+            {
+                auto grp = font.GetTextureGroup(i);
+                for (auto itr = grp.begin(); itr != grp.end(); ++itr)
+                {
+                    mapping[(*itr)->GetCodePoint()] = *itr;
+                }
+            }
+            std::cout << "generating sample to file sample.bmp" << std::endl;
+
+            Bitmap sample(512, 64); // TODO: make it configurable
+            Graphic temp(64, 64);
+            int r = 0, c = 0;
+            int cp = GetNextCodePoint(scr);
+            while (cp != ':') cp = GetNextCodePoint(scr);
+            cp = GetNextCodePoint(scr);
+            while (cp != '\n')
+            {
+                if (mapping.find(cp) == mapping.end())
+                {
+                    std::cerr << "undefined codepoint " << cp << " in test sequence!" << std::endl;
+                    break;
+                }
+                if (c >= 512 - 64)
+                {
+                    std::cerr << "test sequence too long to paint!" << std::endl;
+                }
+
+                mapping[cp]->GetTexture(temp, font.GetPalette());
+                sample.Paint(r, c, temp);
+                c += mapping[cp]->GetInfo().tex_w;
+
+                cp = GetNextCodePoint(scr);
+            }
+            sample.SetFilePath("sample.bmp");
+            sample.SaveFile();
+            std::cout << "sample picture have been made." << std::endl;
         }
     }
+    return 0;
 }
 
 void Execute()

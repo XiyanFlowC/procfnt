@@ -35,6 +35,7 @@ public:
 	const Pixel* const GetPixels(int& o_w, int& o_h) const;
 
 	void Paste(int u, int v, Graphic& g);
+	void Paint(int u, int v, const Graphic& g, int full_alpha = 128);
 	Graphic* Extract(int u, int v, int w, int h) const;
 	void Resize(int new_w, int new_h);
 
