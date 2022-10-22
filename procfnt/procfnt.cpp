@@ -45,7 +45,7 @@ extern "C" {
 */
 int cfg_mode = 0, cfg_type = 0, cfg_bitcount = 16, cfg_block_h = 16, cfg_block_w = 16, cfg_full_alpha = 128;
 int cfg_outfile_h = cfg_block_h * 64, cfg_outfile_w = cfg_block_w * 64, cfg_pcidx = 0;
-int cfg_lb = 1, cfg_rb = 1;
+int cfg_lb = 1, cfg_rb = 1, cfg_fixed_w = 0;
 const char* cfg_infn = nullptr, * cfg_outfn = nullptr, * cfg_subpalette = nullptr, * cfg_oripalette = nullptr, * cfg_alternm = nullptr;
 std::map<int, int> cfg_width;
 
@@ -78,7 +78,7 @@ void Execute();
 int main(int argc, const char** argv)
 {
     //std::cout << argv[0] << std::endl;
-    if (argc == 2) // script parsing mode
+    if (argc == 2 && argv[1][0] != '-') // script parsing mode
     {
         return proc_script(argv[1]);
     }
@@ -209,6 +209,11 @@ int main(int argc, const char** argv)
             cfg_type |= 0x10;
             return 0;
         });
+    lopt_regopt("fixed-width", 'f', 0, [](const char* param)->int
+        {
+            if (1 != sscanf(param, "%d", &cfg_fixed_w)) return -1;
+            return 0;
+        });
     lopt_regopt("help", '?', 0, [](const char* param)->int
         {
             std::cout << "PES/WE 2014 Font File Batch Processor by xiyan" << std::endl;
@@ -225,6 +230,8 @@ int main(int argc, const char** argv)
             std::cout << "--split              -s output seperately." << std::endl;
             std::cout << "--original-palette   -p [palette name] set the font file's palette." << std::endl;
             std::cout << "--substitude-palette -P [palette name] set the bmp file's palette." << std::endl;
+            std::cout << "--fixed-width        -f [fixed width] forcefully defined the width of texture taking in output." << std::endl;
+            std::cout << "--define             -d [codepoint],[width] define the specified codepoint's texture's width." << std::endl;
             std::cout << "--block-width        -w [block width] specify the size of a single block in output picture." << std::endl;
             std::cout << "--block-height       -h [block height] specify the size of a single block in output picture." << std::endl;
             std::cout << "--canvas-width       -W [output file width] specify the size of output file." << std::endl;
@@ -267,11 +274,6 @@ int main(int argc, const char** argv)
 
         Execute();
     }
-    catch (exception& ex)
-    {
-        std::cerr << "Top Level Exception Catcher: Exec failed\n===============\n" << ex.ToString() << std::endl;
-        exit(-15);
-    }
     catch (bad_format& ex)
     {
         std::cerr << "Format Error\n==============\n" << ex.ToString() << std::endl;
@@ -281,6 +283,11 @@ int main(int argc, const char** argv)
     {
         std::cerr << "Operation Error\n==============\n" << bo.ToString() << std::endl;
         exit(-10);
+    }
+    catch (exception& ex)
+    {
+        std::cerr << "Top Level Exception Catcher: Exec failed\n===============\n" << ex.ToString() << std::endl;
+        exit(-15);
     }
     catch (std::exception& ex)
     {
@@ -375,6 +382,8 @@ void ImportGroup(FontFile& font, int grpidx)
             int w = 0;
             if (cfg_type & 0x10)
                 w = GraphicSizeReduce(&gr, pl, cfg_lb, cfg_rb);
+            if (cfg_fixed_w)
+                w = cfg_fixed_w;
             row += cfg_block_w;
             if (row >= cfg_outfile_w) row = 0, line += cfg_block_h;
 
